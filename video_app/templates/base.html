@@ -216,7 +216,14 @@
       });
 
       player.ready(function () {
-        // Restore volume & mute state from localStorage
+        // Default to muted for autoplay on mobile
+        try {
+          player.muted(true);
+        } catch (e) {
+          // ignore if something goes wrong
+        }
+
+        // Restore volume & mute state from localStorage (overrides default if present)
         try {
           const raw = window.localStorage.getItem(storageKey);
           if (raw) {

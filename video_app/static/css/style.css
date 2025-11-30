@@ -394,6 +394,9 @@ textarea.form-control:focus {
 
 .pagination {
   gap: 0.15rem;
+  /* Center the pagination UL in its parent container */
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .page-link {
@@ -427,6 +430,25 @@ textarea.form-control:focus {
   border-color: rgba(55, 65, 81, 0.8);
   color: rgba(75, 85, 99, 0.7);
   box-shadow: none;
+}
+
+/* Mobile pagination tweaks: smaller + more breathing room above footer */
+@media (max-width: 576.98px) {
+  .pagination {
+    gap: 0.1rem;
+  }
+
+  .page-link {
+    padding-inline: 0.45rem;
+    padding-block: 0.2rem;
+    font-size: 0.78rem;
+  }
+
+  nav[aria-label="Videos pagination"],
+  nav[aria-label="Liked videos pagination"],
+  nav[aria-label="Comments pagination"] {
+    margin-bottom: 1.5rem;
+  }
 }
 
 /* =========================================================

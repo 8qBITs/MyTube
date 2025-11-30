@@ -49,9 +49,17 @@ def login():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
+
+        # "Stay signed in" checkbox (value="1" in the form)
+        remember = request.form.get("remember") == "1"
+
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
             session["user_id"] = user.id
+
+            # Make this session persistent (uses PERMANENT_SESSION_LIFETIME from config)
+            session.permanent = remember
+
             flash("Logged in.", "success")
             next_url = request.args.get("next") or url_for("main.index")
             return redirect(next_url)

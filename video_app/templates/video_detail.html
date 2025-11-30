@@ -12,8 +12,10 @@
           <video
             class="video-js vjs-big-play-centered video-main js-player"
             playsinline
+            webkit-playsinline
             controls
             autoplay
+            muted
             preload="auto"
             {% if video.thumbnail_filename %}
               poster="{{ url_for('main.thumbnail', thumb_name=video.thumbnail_filename) }}"
