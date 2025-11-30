@@ -20,6 +20,10 @@ class AppConfig(db.Model):
     # DeepSeek API key for AI title/description generation
     deepseek_api_key = db.Column(db.String(255), nullable=True)
 
+    # DeepSeek prompts
+    deepseek_system_prompt = db.Column(db.Text, nullable=True)
+    deepseek_user_prompt_template = db.Column(db.Text, nullable=True)
+
     # Site-wide branding
     site_name = db.Column(db.String(255), nullable=True)
     footer_text = db.Column(db.String(255), nullable=True)
@@ -245,6 +249,21 @@ def init_default_admin_and_config():
                 "REGISTRATION_ENABLED_DEFAULT", True
             ),
             deepseek_api_key=None,
+            deepseek_system_prompt=(
+                "You are an assistant that writes concise, engaging video "
+                "titles and descriptions for a video website."
+            ),
+            deepseek_user_prompt_template=(
+                "You help write YouTube-style video titles and descriptions.\n\n"
+                "Given this video file name: \"{filename}\",\n"
+                "1. Generate a short, catchy title (max 80 characters).\n"
+                "2. Generate a 2–3 sentence description.\n\n"
+                "Respond ONLY as JSON like:\n"
+                "{\n"
+                '  \"title\": \"...\",\n'
+                '  \"description\": \"...\"\n'
+                "}\n"
+            ),
             site_name="MyTube",
             footer_text="© MyTube",
         )

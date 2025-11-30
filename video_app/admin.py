@@ -17,8 +17,27 @@ from . import db
 from .models import User, Video, AppConfig
 from .auth import admin_required, current_user
 from .streaming import generate_video_thumbnail
+from .torrent_downloader import TorrentManager, LIBTORRENT_AVAILABLE
 
 admin_bp = Blueprint("admin", __name__, template_folder="templates/admin")
+
+
+DEFAULT_DEEPSEEK_SYSTEM_PROMPT = (
+    "You are an assistant that writes concise, engaging video "
+    "titles and descriptions for a video website."
+)
+
+DEFAULT_DEEPSEEK_USER_PROMPT_TEMPLATE = (
+    "You help write YouTube-style video titles and descriptions.\n\n"
+    "Given this video file name: \"{filename}\",\n"
+    "1. Generate a short, catchy title (max 80 characters).\n"
+    "2. Generate a 2–3 sentence description.\n\n"
+    "Respond ONLY as JSON like:\n"
+    "{\n"
+    '  \"title\": \"...\",\n'
+    '  \"description\": \"...\"\n'
+    "}\n"
+)
 
 
 def _get_site_config():
@@ -31,6 +50,58 @@ def _get_site_config():
     return site_name, footer_text
 
 
+def _get_torrent_manager() -> "TorrentManager":
+    """
+    Lazily create a TorrentManager and store it on app.extensions.
+    """
+    mgr = current_app.extensions.get("torrent_manager")
+    if mgr is None:
+        temp_root = current_app.config.get(
+            "TORRENT_TEMP_DIR",
+            os.path.join(current_app.instance_path, "torrents"),
+        )
+        mgr = TorrentManager(temp_root=temp_root)
+        current_app.extensions["torrent_manager"] = mgr
+    return mgr
+
+
+def _extract_json_block(text: str) -> str | None:
+    """
+    DeepSeek sometimes wraps JSON in ```json ... ``` or adds extra text.
+    Try to pull out a single JSON object from the text.
+
+    Returns the raw JSON string or None if nothing reasonable is found.
+    """
+    if not text:
+        return None
+
+    s = text.strip()
+
+    # Strip ``` fences if present
+    if s.startswith("```"):
+        lines = s.splitlines()
+        # Drop first line (``` or ```json)
+        lines = lines[1:]
+        # Drop last line if it's ``` alone
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        s = "\n".join(lines).strip()
+
+    # If the whole thing already looks like JSON, use it
+    if s.startswith("{") and s.endswith("}"):
+        return s
+
+    # Otherwise, try to find the first {...} block
+    start = s.find("{")
+    end = s.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        candidate = s[start : end + 1].strip()
+        if candidate.startswith("{") and candidate.endswith("}"):
+            return candidate
+
+    return None
+
+
 @admin_bp.route("/")
 @admin_required
 def dashboard():
@@ -39,12 +110,23 @@ def dashboard():
     cfg = AppConfig.query.first()
     site_name, footer_text = _get_site_config()
 
+    deepseek_system_prompt = (
+        cfg.deepseek_system_prompt if cfg and cfg.deepseek_system_prompt else DEFAULT_DEEPSEEK_SYSTEM_PROMPT
+    )
+    deepseek_user_prompt_template = (
+        cfg.deepseek_user_prompt_template
+        if cfg and cfg.deepseek_user_prompt_template
+        else DEFAULT_DEEPSEEK_USER_PROMPT_TEMPLATE
+    )
+
     return render_template(
         "admin/dashboard.html",
         video_count=video_count,
         user_count=user_count,
         registration_enabled=cfg.registration_enabled if cfg else True,
         deepseek_api_key=(cfg.deepseek_api_key if cfg and cfg.deepseek_api_key else ""),
+        deepseek_system_prompt=deepseek_system_prompt,
+        deepseek_user_prompt_template=deepseek_user_prompt_template,
         site_name=site_name,
         footer_text=footer_text,
     )
@@ -322,7 +404,7 @@ def manage_users():
 @admin_required
 def settings():
     """
-    Update global settings (registration_enabled, DeepSeek API key, branding).
+    Update global settings (registration_enabled, DeepSeek API key, prompts, branding).
     """
     cfg = AppConfig.query.first()
     if cfg is None:
@@ -334,7 +416,15 @@ def settings():
     deepseek_api_key = (request.form.get("deepseek_api_key") or "").strip()
     cfg.deepseek_api_key = deepseek_api_key or None
 
-    # NEW: site name + footer text
+    cfg.deepseek_system_prompt = (
+        (request.form.get("deepseek_system_prompt") or "").strip()
+        or DEFAULT_DEEPSEEK_SYSTEM_PROMPT
+    )
+    cfg.deepseek_user_prompt_template = (
+        (request.form.get("deepseek_user_prompt_template") or "").strip()
+        or DEFAULT_DEEPSEEK_USER_PROMPT_TEMPLATE
+    )
+
     cfg.site_name = (request.form.get("site_name") or "").strip() or None
     cfg.footer_text = (request.form.get("footer_text") or "").strip() or None
 
@@ -413,18 +503,11 @@ def ai_video_metadata(video_id):
 
     api_key = cfg.deepseek_api_key
 
-    # Build prompt
-    prompt = (
-        "You help write YouTube-style video titles and descriptions.\n\n"
-        f"Given this video file name: \"{video.filename}\",\n"
-        "1. Generate a short, catchy title (max 80 characters).\n"
-        "2. Generate a 2–3 sentence description.\n\n"
-        "Respond ONLY as JSON like:\n"
-        "{\n"
-        '  \"title\": \"...\",\n'
-        '  \"description\": \"...\"\n'
-        "}\n"
-    )
+    system_prompt = cfg.deepseek_system_prompt or DEFAULT_DEEPSEEK_SYSTEM_PROMPT
+    user_template = cfg.deepseek_user_prompt_template or DEFAULT_DEEPSEEK_USER_PROMPT_TEMPLATE
+
+    # Only replace the {filename} placeholder, do NOT use .format()
+    user_prompt = user_template.replace("{filename}", video.filename)
 
     try:
         resp = requests.post(
@@ -438,12 +521,9 @@ def ai_video_metadata(video_id):
                 "messages": [
                     {
                         "role": "system",
-                        "content": (
-                            "You are an assistant that writes concise, engaging video "
-                            "titles and descriptions for a video website."
-                        ),
+                        "content": system_prompt,
                     },
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
                 "max_tokens": 300,
             },
@@ -458,12 +538,22 @@ def ai_video_metadata(video_id):
 
     try:
         content = data["choices"][0]["message"]["content"]
-        parsed = json.loads(content)
+        raw_json = _extract_json_block(content)
+        if not raw_json:
+            raise ValueError("No JSON object found in DeepSeek response")
+
+        parsed = json.loads(raw_json)
         new_title = parsed.get("title") or video.title or os.path.splitext(video.filename)[0]
         new_description = parsed.get("description") or (video.description or "")
     except Exception as exc:
+        # Log both the error and the raw content to make debugging easy
         current_app.logger.exception("DeepSeek response parse error: %s", exc)
-        flash("DeepSeek returned an unexpected response.", "danger")
+        try:
+            current_app.logger.error("DeepSeek raw content: %r", content)
+        except Exception:
+            pass
+
+        flash("DeepSeek returned an unexpected response (couldn't parse JSON).", "danger")
         return redirect(request.referrer or url_for("admin.edit_video", video_id=video.id))
 
     video.title = new_title.strip()
@@ -511,3 +601,86 @@ def regenerate_thumbnail(video_id):
                 current_app.logger.warning("Could not remove old thumbnail %s", old_path)
 
     return {"success": True, "thumbnail": new_thumb}
+
+
+# -------------------- Torrent Downloader UI --------------------
+
+
+@admin_bp.route("/torrents", methods=["GET", "POST"])
+@admin_required
+def torrents():
+    """
+    Torrent downloader admin page.
+    - Start new downloads from magnet links.
+    - Show current jobs and progress.
+    """
+    site_name, footer_text = _get_site_config()
+    mgr = _get_torrent_manager()
+
+    default_exts = current_app.config.get(
+        "TORRENT_VIDEO_EXTS_DEFAULT",
+        ".mp4,.mkv,.webm,.avi,.mov,.flv,.wmv",
+    )
+
+    if request.method == "POST":
+        magnet = (request.form.get("magnet_link") or "").strip()
+        ext_str = (request.form.get("video_exts") or default_exts).strip()
+
+        if not LIBTORRENT_AVAILABLE:
+            flash("python-libtorrent is not installed on the server.", "danger")
+            return redirect(url_for("admin.torrents"))
+
+        if not magnet:
+            flash("Magnet link is required.", "danger")
+            return redirect(url_for("admin.torrents"))
+
+        video_exts = [e.strip() for e in ext_str.split(",") if e.strip()]
+        dest_dir = current_app.config["VIDEO_UPLOAD_DIR"]
+
+        mgr.add_job(magnet_uri=magnet, dest_dir=dest_dir, video_exts=video_exts)
+        flash("Torrent download started.", "success")
+        return redirect(url_for("admin.torrents"))
+
+    jobs = mgr.list_jobs()
+    return render_template(
+        "admin/torrents.html",
+        jobs=jobs,
+        site_name=site_name,
+        footer_text=footer_text,
+        default_video_exts=default_exts,
+        libtorrent_available=LIBTORRENT_AVAILABLE,
+    )
+
+
+@admin_bp.route("/torrents/status")
+@admin_required
+def torrents_status():
+    """
+    JSON endpoint polled by the UI to update torrent progress.
+    """
+    mgr = _get_torrent_manager()
+    return {"jobs": mgr.list_jobs()}
+
+
+@admin_bp.route("/torrents/<job_id>/delete", methods=["POST"])
+@admin_required
+def torrents_delete(job_id):
+    """
+    Delete a torrent job:
+    - Cancels if still running.
+    - Deletes temp data.
+    - Removes from list.
+    (Final moved video files in VIDEO_UPLOAD_DIR are not removed.)
+    """
+    mgr = _get_torrent_manager()
+    ok = mgr.delete_job(job_id)
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return {"success": ok}
+
+    if ok:
+        flash("Torrent job removed.", "success")
+    else:
+        flash("Torrent job not found.", "warning")
+
+    return redirect(url_for("admin.torrents"))

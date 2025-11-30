@@ -81,6 +81,35 @@
             </div>
           </div>
 
+          <div class="mb-3">
+            <label for="deepseek_system_prompt" class="form-label">DeepSeek system prompt</label>
+            <textarea
+              class="form-control"
+              id="deepseek_system_prompt"
+              name="deepseek_system_prompt"
+              rows="3"
+              placeholder="System instructions for the AI...">{{ deepseek_system_prompt or '' }}</textarea>
+            <div class="form-text">
+              This is sent as the <strong>system</strong> message to DeepSeek.
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="deepseek_user_prompt_template" class="form-label">
+              DeepSeek user prompt template
+            </label>
+            <textarea
+              class="form-control"
+              id="deepseek_user_prompt_template"
+              name="deepseek_user_prompt_template"
+              rows="6"
+              placeholder="Use {filename} where the video file name should be inserted.">{{ deepseek_user_prompt_template or '' }}</textarea>
+            <div class="form-text">
+              This is the <strong>user</strong> prompt. The placeholder
+              <code>{filename}</code> will be replaced with the video file name.
+            </div>
+          </div>
+
           <hr class="my-3">
 
           <div class="mb-3">

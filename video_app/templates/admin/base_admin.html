@@ -42,6 +42,11 @@
           <i class="bi bi-search me-2"></i>
           Discover
         </a>
+        <a class="nav-link {% if request.endpoint == 'admin.torrents' %}active{% endif %}"
+           href="{{ url_for('admin.torrents') }}">
+          <i class="bi bi-download me-2"></i>
+          Torrent Downloader
+        </a>
       </div>
     </div>
   </div>

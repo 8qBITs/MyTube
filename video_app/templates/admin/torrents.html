@@ -1,0 +1,228 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Torrent Downloader - Admin - {{ site_name or 'MyTube' }}{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center mb-3">
+  <h2 class="mb-0">Torrent Downloader</h2>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    {% if not libtorrent_available %}
+      <div class="alert alert-danger mb-3">
+        <strong>python-libtorrent</strong> is not installed on the server.
+        Install it to enable torrent downloading.
+      </div>
+    {% endif %}
+
+    <form method="post" class="row g-3">
+      <div class="col-12">
+        <label for="magnet_link" class="form-label">Magnet link</label>
+        <textarea
+          class="form-control"
+          id="magnet_link"
+          name="magnet_link"
+          rows="2"
+          placeholder="magnet:?xt=urn:btih:..."
+          {% if not libtorrent_available %}disabled{% endif %}></textarea>
+      </div>
+
+      <div class="col-md-6">
+        <label for="video_exts" class="form-label">Video file extensions</label>
+        <input
+          type="text"
+          class="form-control"
+          id="video_exts"
+          name="video_exts"
+          value="{{ default_video_exts }}"
+          {% if not libtorrent_available %}disabled{% endif %}>
+        <div class="form-text">
+          Comma-separated list. Only files with these extensions will be kept
+          and moved into the video storage directory.
+        </div>
+      </div>
+
+      <div class="col-md-6 d-flex align-items-end justify-content-md-end">
+        <button type="submit"
+                class="btn btn-primary"
+                {% if not libtorrent_available %}disabled{% endif %}>
+          <i class="bi bi-download me-1"></i>
+          Start Download
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <strong>Active &amp; Recent Downloads</strong>
+    <small class="text-muted">
+      Files are moved to <code>{{ config['VIDEO_UPLOAD_DIR'] }}</code> when complete.
+    </small>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0 align-middle" id="torrentTable">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 22%;">Name</th>
+            <th style="width: 13%;">Status</th>
+            <th style="width: 30%;">Progress</th>
+            <th style="width: 15%;">Speed</th>
+            <th style="width: 12%;">ETA</th>
+            <th style="width: 8%;" class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="torrentTableBody">
+          {% if jobs %}
+            {% for j in jobs %}
+              <tr data-job-id="{{ j.id }}">
+                <td class="small text-truncate" title="{{ j.name or j.magnet }}">
+                  {{ j.name or j.magnet }}
+                </td>
+                <td class="small status-cell">
+                  {{ j.status }}
+                </td>
+                <td>
+                  <div class="progress" style="height: 0.75rem;">
+                    <div class="progress-bar" role="progressbar"
+                         style="width: {{ j.progress }}%;"
+                         aria-valuenow="{{ j.progress }}" aria-valuemin="0" aria-valuemax="100">
+                      <span class="small">{{ j.progress }}%</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="small">
+                  ↓ {{ j.download_rate }} B/s<br>
+                  ↑ {{ j.upload_rate }} B/s
+                </td>
+                <td class="small">
+                  {% if j.eta_seconds is not none %}
+                    ~{{ j.eta_seconds }} s
+                  {% else %}
+                    &mdash;
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <form method="post"
+                        action="{{ url_for('admin.torrents_delete', job_id=j.id) }}"
+                        class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-3 small">
+                No torrent downloads yet. Start one above.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const tableBody = document.getElementById("torrentTableBody");
+
+  function formatSpeed(bytes) {
+    if (!bytes || bytes <= 0) return "0 B/s";
+    const units = ["B/s", "KB/s", "MB/s", "GB/s"];
+    let i = 0;
+    let v = bytes;
+    while (v >= 1024 && i < units.length - 1) {
+      v /= 1024;
+      i++;
+    }
+    return v.toFixed(1) + " " + units[i];
+  }
+
+  function formatTime(sec) {
+    if (sec == null || sec < 0) return "—";
+    const s = Math.round(sec);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const r = s % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${r}s`;
+    return `${r}s`;
+  }
+
+  function renderJobs(jobs) {
+    if (!jobs || !jobs.length) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center text-muted py-3 small">
+            No torrent downloads yet. Start one above.
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tableBody.innerHTML = "";
+    jobs.forEach(job => {
+      const tr = document.createElement("tr");
+      tr.dataset.jobId = job.id;
+
+      const name = job.name || job.magnet || ("Job " + job.id.slice(0, 8));
+      const progress = job.progress || 0;
+
+      tr.innerHTML = `
+        <td class="small text-truncate" title="${name}">${name}</td>
+        <td class="small status-cell">${job.status}</td>
+        <td>
+          <div class="progress" style="height: 0.75rem;">
+            <div class="progress-bar" role="progressbar"
+                 style="width: ${progress}%;"
+                 aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100">
+              <span class="small">${progress}%</span>
+            </div>
+          </div>
+        </td>
+        <td class="small">
+          ↓ ${formatSpeed(job.download_rate)}<br>
+          ↑ ${formatSpeed(job.upload_rate)}
+        </td>
+        <td class="small">
+          ${formatTime(job.eta_seconds)}
+        </td>
+        <td class="text-end">
+          <form method="post"
+                action="${window.location.pathname.replace(/\/+$/, "")}/${job.id}/delete"
+                class="d-inline js-delete-form">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </td>
+      `;
+      tableBody.appendChild(tr);
+    });
+  }
+
+  async function pollStatus() {
+    try {
+      const resp = await fetch("{{ url_for('admin.torrents_status') }}", {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      renderJobs(data.jobs || []);
+    } catch (e) {
+      console.error("Torrent status poll error:", e);
+    }
+  }
+
+  // Initial load + polling every 2s
+  pollStatus();
+  setInterval(pollStatus, 2000);
+});
+</script>
+{% endblock %}
