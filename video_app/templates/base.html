@@ -18,10 +18,10 @@
     href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
   >
 
-  <!-- Plyr CSS -->
+  <!-- Video.js CSS -->
   <link
     rel="stylesheet"
-    href="https://cdn.plyr.io/3.7.8/plyr.css"
+    href="https://vjs.zencdn.net/8.10.0/video-js.css"
   >
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -140,25 +140,22 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Plyr JS -->
-<script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+<!-- Video.js JS -->
+<script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
 
-<!-- Plyr init with autoplay + persistent volume + mobile double-tap seek -->
+<!-- Video.js init with autoplay + persistent volume + mobile double-tap seek -->
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    if (!window.Plyr) return;
+    if (!window.videojs) return;
 
-    // Small helper: add YouTube-style double-tap seek on touch devices
+    // Add YouTube-style double-tap seek on touch devices
     function attachDoubleTapSeek(player) {
-      // Only bother on touch-capable devices
       const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       if (!isTouch) return;
 
-      const container = player.elements && player.elements.container;
-      if (!container) return;
-
-      // Prefer just the video area, not the controls
-      const tapArea = container.querySelector('.plyr__video-wrapper') || container;
+      // The actual video element inside the Video.js wrapper
+      const techEl = player.el().querySelector('.vjs-tech') || player.el();
+      if (!techEl) return;
 
       let lastTapTime = 0;
       const DOUBLE_TAP_DELAY = 300; // ms
@@ -170,101 +167,88 @@
           if (!touch) return;
 
           const now = Date.now();
-          const rect = tapArea.getBoundingClientRect();
+          const rect = techEl.getBoundingClientRect();
           const x = touch.clientX - rect.left;
 
           const side = x < rect.width / 2 ? 'left' : 'right';
+          const current = player.currentTime() || 0;
+          const duration = player.duration() || (current + SEEK_SECONDS);
 
           if (now - lastTapTime < DOUBLE_TAP_DELAY) {
             // Double-tap detected
             ev.preventDefault();
             ev.stopPropagation();
 
+            let target;
             if (side === 'left') {
-              // Seek backward
-              const target = Math.max((player.currentTime || 0) - SEEK_SECONDS, 0);
-              player.currentTime = target;
+              target = Math.max(current - SEEK_SECONDS, 0);
             } else {
-              // Seek forward
-              const duration = player.duration || (player.currentTime || 0) + SEEK_SECONDS;
-              const target = Math.min((player.currentTime || 0) + SEEK_SECONDS, duration);
-              player.currentTime = target;
+              target = Math.min(current + SEEK_SECONDS, duration);
             }
+            player.currentTime(target);
 
-            // Reset to avoid triple-tap confusion
             lastTapTime = 0;
           } else {
             lastTapTime = now;
           }
         } catch (e) {
-          // Fail-safe: if anything goes wrong, don't break playback
           console.error('Double-tap seek error:', e);
         }
       }
 
-      tapArea.addEventListener('touchend', onTouchEnd, { passive: false });
+      techEl.addEventListener('touchend', onTouchEnd, { passive: false });
     }
 
-    // Best-effort storage config (volume etc. in localStorage)
-    const players = Plyr.setup('.js-player', {
-      controls: [
-        'play-large',
-        'play',
-        'progress',
-        'current-time',
-        'mute',
-        'volume',
-        'settings',
-        'pip',
-        'airplay',
-        'fullscreen'
-      ],
-      autoplay: true, // ask Plyr to autoplay
-      storage: {
-        enabled: true,
-        key: 'mytube-player-settings' // custom key so it's not shared with other sites
+    const storageKey = 'mytube-player-settings';
+
+    // Setup all players that have the .js-player class
+    const videoEls = document.querySelectorAll('video.js-player');
+    videoEls.forEach(function (el, index) {
+      // Ensure each video element has an id (Video.js prefers it)
+      if (!el.id) {
+        el.id = 'js-player-' + (index + 1);
       }
-    });
 
-    // Ensure autoplay is attempted programmatically as well
-    players.forEach(function (player) {
-      player.on('ready', function () {
-        // Attach mobile double-tap seek
-        attachDoubleTapSeek(player);
+      const player = videojs(el, {
+        autoplay: true,
+        controls: true,
+        preload: 'auto'
+      });
 
-        // Try to restore volume (Plyr does this automatically when storage.enabled is true,
-        // but this keeps it explicit and future-proof)
+      player.ready(function () {
+        // Restore volume & mute state from localStorage
         try {
-          const storeKey = 'mytube-player-settings';
-          const raw = window.localStorage.getItem(storeKey);
+          const raw = window.localStorage.getItem(storageKey);
           if (raw) {
             const data = JSON.parse(raw);
             if (typeof data.volume === 'number') {
-              player.volume = data.volume;
+              player.volume(data.volume);
             }
             if (typeof data.muted === 'boolean') {
-              player.muted = data.muted;
+              player.muted(data.muted);
             }
           }
         } catch (e) {
-          // localStorage might be blocked; ignore
+          // localStorage might be unavailable; ignore
         }
 
-        // Try to autoplay (browsers may still block this if sound is on)
+        // Attach mobile double-tap seek
+        attachDoubleTapSeek(player);
+
+        // Try to autoplay (browsers may still block this)
         const playPromise = player.play();
         if (playPromise && typeof playPromise.then === 'function') {
           playPromise.catch(function () {
-            // Autoplay was blocked by the browser; nothing else we can do without user input.
+            // Autoplay was blocked by the browser; nothing else we can do here.
           });
         }
       });
 
-      // Save volume/muted on change so it persists across refreshes
+      // Persist volume/muted when it changes
       player.on('volumechange', function () {
         try {
-          const storeKey = 'mytube-player-settings';
-          const existingRaw = window.localStorage.getItem(storeKey);
           let data = {};
+          const existingRaw = window.localStorage.getItem(storageKey);
           if (existingRaw) {
             try {
               data = JSON.parse(existingRaw) || {};
@@ -272,11 +256,11 @@
               data = {};
             }
           }
-          data.volume = player.volume;
-          data.muted = player.muted;
-          window.localStorage.setItem(storeKey, JSON.stringify(data));
+          data.volume = player.volume();
+          data.muted = player.muted();
+          window.localStorage.setItem(storageKey, JSON.stringify(data));
         } catch (e) {
-          // localStorage unavailable (incognito / blocked cookies) – safely ignore
+          // Ignore storage errors
         }
       });
     });
