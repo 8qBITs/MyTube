@@ -130,7 +130,6 @@ video {
   background-color: #000;
 }
 
-
 /* Widen the site a bit (~30% more on large screens) */
 @media (min-width: 1200px) {
   .container {
@@ -388,15 +387,19 @@ textarea.form-control:focus {
   border-radius: 999px;
 }
 
+/* Extra small button (for compact comment actions) */
+.btn-xs {
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.7rem;
+}
+
 /* =========================================================
    Pagination
    ========================================================= */
 
 .pagination {
   gap: 0.15rem;
-  /* Center the pagination UL in its parent container */
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .page-link {
@@ -430,25 +433,6 @@ textarea.form-control:focus {
   border-color: rgba(55, 65, 81, 0.8);
   color: rgba(75, 85, 99, 0.7);
   box-shadow: none;
-}
-
-/* Mobile pagination tweaks: smaller + more breathing room above footer */
-@media (max-width: 576.98px) {
-  .pagination {
-    gap: 0.1rem;
-  }
-
-  .page-link {
-    padding-inline: 0.45rem;
-    padding-block: 0.2rem;
-    font-size: 0.78rem;
-  }
-
-  nav[aria-label="Videos pagination"],
-  nav[aria-label="Liked videos pagination"],
-  nav[aria-label="Comments pagination"] {
-    margin-bottom: 1.5rem;
-  }
 }
 
 /* =========================================================
@@ -690,4 +674,60 @@ h1, h2, h3, h4, h5, h6 {
 
 .text-muted {
   color: var(--mt-text-muted) !important;
+}
+
+/* =========================================================
+   Comments + description tweaks
+   ========================================================= */
+
+.video-description {
+  white-space: pre-wrap;
+}
+
+/* Thread container */
+.comment-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Avatar circles */
+.comment-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.2);
+  border: 1px solid rgba(37, 99, 235, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+/* Comment bubble */
+.comment-item-inner {
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: 0.6rem;
+  padding: 0.45rem 0.75rem 0.4rem;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+}
+
+/* Comment text – compact + preserve newlines without template indent */
+.comment-body-text {
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+}
+
+/* Actions row (like / reply) */
+.comment-actions {
+  margin-top: 0.25rem;
+}
+
+/* Nested children with slim vertical line */
+.comment-children {
+  margin-left: 1.5rem;
+  margin-top: 0.35rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid rgba(148, 163, 184, 0.35);
 }

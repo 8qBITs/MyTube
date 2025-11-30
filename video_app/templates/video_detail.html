@@ -32,7 +32,7 @@
 
         <h3 class="mb-1">{{ video.title }}</h3>
 
-        <div class="d-flex flex-wrap align-items-center text-muted small mb-3 gap-2">
+        <div class="d-flex flex-wrap align-items-center text-muted small mb-2 gap-2">
           <span>{{ video.view_count or 0 }} view{{ (video.view_count or 0) != 1 and 's' or '' }}</span>
           {% if video.uploaded_at %}
           <span>•</span>
@@ -43,7 +43,7 @@
         <!-- Like / dislike buttons -->
         <form method="post"
               action="{{ url_for('main.like_video', video_id=video.id) }}"
-              class="d-flex flex-wrap align-items-center gap-2 mb-3 js-like-form">
+              class="d-flex flex-wrap align-items-center gap-2 mb-2 js-like-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
 
           <div class="btn-group" role="group" aria-label="Like / dislike">
@@ -75,64 +75,85 @@
         </form>
 
         {% if video.description %}
-          <div class="mb-3" style="white-space: pre-wrap;">
-            {{ video.description }}
-          </div>
+          <div class="mb-2 video-description">{{- video.description|trim -}}</div>
         {% else %}
-          <p class="text-muted mb-3 small">
+          <p class="text-muted mb-2 small">
             No description provided.
           </p>
         {% endif %}
 
-        <!-- Comments -->
-        <div class="card mt-4">
-          <div class="card-body">
-            <h5 class="card-title mb-3">
+        <!-- Comments section sits inside the same card, separated by a subtle border -->
+        <div class="mt-2 pt-3 border-top">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">
               Comments
               <span class="text-muted small">({{ comments|length }})</span>
             </h5>
+          </div>
 
-            <!-- New comment form -->
-            <form method="post"
-                  action="{{ url_for('main.comment_video', video_id=video.id) }}"
-                  class="mb-4 comment-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+          <!-- New comment form -->
+          <form method="post"
+                action="{{ url_for('main.comment_video', video_id=video.id) }}"
+                class="mb-3 comment-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
 
-              <div class="mb-2">
-                <label for="comment_text" class="form-label small text-muted">Add a comment</label>
+            <div class="d-flex gap-2">
+              <div class="comment-avatar me-1 d-none d-sm-flex">
+                <span>
+                  {% if current_user %}
+                    {{ (current_user.username or current_user.email or '?')[0]|upper }}
+                  {% else %}
+                    ?
+                  {% endif %}
+                </span>
+              </div>
+              <div class="flex-grow-1">
                 <textarea class="form-control"
                           id="comment_text"
                           name="comment_text"
                           rows="3"
                           maxlength="2000"
                           placeholder="Share your thoughts…"></textarea>
-              </div>
-
-              <div class="d-flex justify-content-between align-items-center">
-                <div class="form-check">
-                  <input class="form-check-input"
-                         type="checkbox"
-                         value="1"
-                         id="anonymous"
-                         name="anonymous">
-                  <label class="form-check-label small" for="anonymous">
-                    Post as anonymous
-                  </label>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                  <div class="form-check">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           value="1"
+                           id="anonymous"
+                           name="anonymous">
+                    <label class="form-check-label small" for="anonymous">
+                      Post as anonymous
+                    </label>
+                  </div>
+                  <button type="submit" class="btn btn-sm btn-primary">
+                    Comment
+                  </button>
                 </div>
-                <button type="submit" class="btn btn-sm btn-primary">
-                  Comment
-                </button>
               </div>
-            </form>
+            </div>
+          </form>
 
-            <hr>
+          <hr class="mt-0 mb-3">
 
-            <!-- Existing comments -->
-            {% if comments %}
-              <div class="d-flex flex-column gap-3">
-                {% for c in comments %}
-                  <div class="border-bottom pb-3">
-                    <div class="d-flex justify-content-between">
+          {# Recursive threaded comment renderer #}
+          {% macro render_comment(c) %}
+            <div class="comment-item" id="comment-{{ c.id }}">
+              <div class="d-flex align-items-start gap-2">
+                {% if c.anonymous or not c.user %}
+                  {% set display_name = 'Anonymous' %}
+                  {% set avatar_letter = 'A' %}
+                {% else %}
+                  {% set display_name = c.user.username or c.user.email %}
+                  {% set avatar_letter = display_name[0]|upper %}
+                {% endif %}
+
+                <div class="comment-avatar">
+                  <span>{{ avatar_letter }}</span>
+                </div>
+
+                <div class="flex-grow-1">
+                  <div class="comment-item-inner">
+                    <div class="d-flex justify-content-between align-items-start">
                       <div>
                         <strong class="small">
                           {% if c.anonymous or not c.user %}
@@ -140,7 +161,7 @@
                           {% else %}
                             <a href="{{ url_for('main.user_profile', user_id=c.user.id) }}"
                                class="text-decoration-none">
-                              {{ c.user.username or c.user.email }}
+                              {{ display_name }}
                             </a>
                           {% endif %}
                         </strong>
@@ -153,7 +174,13 @@
                           </span>
                         {% endif %}
                       </div>
-                      <div class="text-end">
+                    </div>
+
+                    <div class="mt-1 comment-body-text">{{- c.text|trim -}}</div>
+
+                    <!-- Actions row: like on the left, Reply on the right -->
+                    <div class="d-flex align-items-center justify-content-between comment-actions">
+                      <div class="d-flex align-items-center gap-2">
                         <!-- Comment likes -->
                         <form method="post"
                               action="{{ url_for('main.like_comment', comment_id=c.id) }}"
@@ -162,7 +189,7 @@
                           {% set c_like_count = likes_by_comment.get(c.id, 0) %}
                           {% set user_liked = (c.id in user_comment_likes) %}
                           <button type="submit"
-                                  class="btn btn-sm btn-outline-primary">
+                                  class="btn btn-xs btn-outline-primary">
                             <i class="bi bi-hand-thumbs-up{% if user_liked %}-fill{% endif %} me-1"></i>
                             {{ c_like_count }}
                           </button>
@@ -172,89 +199,28 @@
                           <!-- Heart toggle -->
                           <form method="post"
                                 action="{{ url_for('main.heart_comment', comment_id=c.id) }}"
-                                class="d-inline ms-1 comment-heart-form">
+                                class="d-inline comment-heart-form">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
                             <button type="submit"
-                                    class="btn btn-sm {% if c.admin_hearted %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                                    class="btn btn-xs {% if c.admin_hearted %}btn-danger{% else %}btn-outline-danger{% endif %}">
                               <i class="bi bi-heart{% if c.admin_hearted %}-fill{% endif %}"></i>
                             </button>
                           </form>
                         {% endif %}
                       </div>
+
+                      <!-- Reply trigger on the right -->
+                      <a href="#reply-to-{{ c.id }}"
+                         class="small text-muted text-decoration-none js-show-reply">
+                        Reply
+                      </a>
                     </div>
 
-                    <div class="mt-1" style="white-space: pre-wrap;">
-                      {{ c.text }}
-                    </div>
-
-                    {# Replies sorted in template #}
-                    {% set replies = c.replies|sort(attribute='created_at') %}
-                    {% if replies %}
-                      <div class="mt-2 ms-3 border-start ps-3">
-                        {% for r in replies %}
-                          <div class="mb-2">
-                            <div class="d-flex justify-content-between">
-                              <div>
-                                <strong class="small">
-                                  {% if r.anonymous or not r.user %}
-                                    Anonymous
-                                  {% else %}
-                                    <a href="{{ url_for('main.user_profile', user_id=r.user.id) }}"
-                                       class="text-decoration-none">
-                                      {{ r.user.username or r.user.email }}
-                                    </a>
-                                  {% endif %}
-                                </strong>
-                                <span class="text-muted small ms-2">
-                                  {{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '' }}
-                                </span>
-                                {% if r.admin_hearted %}
-                                  <span class="badge bg-danger ms-2">
-                                    <i class="bi bi-heart-fill me-1"></i>Highlighted
-                                  </span>
-                                {% endif %}
-                              </div>
-                              <div class="text-end">
-                                <form method="post"
-                                      action="{{ url_for('main.like_comment', comment_id=r.id) }}"
-                                      class="d-inline comment-like-form">
-                                  <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
-                                  {% set r_like_count = likes_by_comment.get(r.id, 0) %}
-                                  {% set r_user_liked = (r.id in user_comment_likes) %}
-                                  <button type="submit"
-                                          class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-hand-thumbs-up{% if r_user_liked %}-fill{% endif %} me-1"></i>
-                                    {{ r_like_count }}
-                                  </button>
-                                </form>
-
-                                {% if current_user and current_user.is_admin %}
-                                  <form method="post"
-                                        action="{{ url_for('main.heart_comment', comment_id=r.id) }}"
-                                        class="d-inline js-heart-form"
-                                        data-comment-id="{{ r.id }}">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
-                                    <button type="submit"
-                                            class="btn btn-sm {% if r.admin_hearted %}btn-danger{% else %}btn-outline-danger{% endif %}">
-                                      <i class="bi bi-heart{% if r.admin_hearted %}-fill{% endif %}"></i>
-                                    </button>
-                                  </form>
-                                {% endif %}
-                              </div>
-                            </div>
-                            <div class="mt-1 small" style="white-space: pre-wrap;">
-                              {{ r.text }}
-                            </div>
-                          </div>
-                        {% endfor %}
-                      </div>
-                    {% endif %}
-
-                    <!-- Reply form -->
+                    <!-- Inline reply form (hidden by default, toggled by JS) -->
                     <form method="post"
                           action="{{ url_for('main.comment_video', video_id=video.id) }}"
-                          class="mt-2 js-reply-form"
-                          data-parent-id="{{ c.id }}">
+                          class="mt-2 comment-reply-form d-none"
+                          id="reply-to-{{ c.id }}">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
                       <input type="hidden" name="parent_comment_id" value="{{ c.id }}">
                       <div class="input-group input-group-sm">
@@ -268,12 +234,31 @@
                       </div>
                     </form>
                   </div>
-                {% endfor %}
+
+                  {# Child comments (recursive) #}
+                  {% set replies = c.replies|sort(attribute='created_at') %}
+                  {% if replies %}
+                    <div class="comment-children">
+                      {% for r in replies %}
+                        {{ render_comment(r) }}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
               </div>
-            {% else %}
-              <p class="text-muted mb-0">No comments yet. Be the first to comment!</p>
-            {% endif %}
-          </div>
+            </div>
+          {% endmacro %}
+
+          <!-- Existing comments (multi-level thread) -->
+          {% if comments %}
+            <div class="comment-thread">
+              {% for c in comments %}
+                {{ render_comment(c) }}
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted mb-0">No comments yet. Be the first to comment!</p>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -326,4 +311,30 @@
     {% endif %}
   </div>
 </div>
+
+<script>
+  // Show/hide inline reply forms when "Reply" is clicked
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.js-show-reply').forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        var commentEl = this.closest('.comment-item');
+        if (!commentEl) return;
+        var id = commentEl.id.replace('comment-', '');
+        if (!id) return;
+        var form = document.getElementById('reply-to-' + id);
+        if (!form) return;
+
+        form.classList.toggle('d-none');
+
+        if (!form.classList.contains('d-none')) {
+          var input = form.querySelector('input[name="comment_text"]');
+          if (input) {
+            input.focus();
+          }
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}
