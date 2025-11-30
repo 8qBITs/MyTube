@@ -1,0 +1,157 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Settings - {{ site_name or 'MyTube' }}{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center mb-3">
+  <div>
+    <h2 class="mb-0">Settings</h2>
+    <p class="text-muted small mb-0">
+      Global configuration for registration, AI metadata, branding and transcoding.
+    </p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8 col-xl-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <form method="post" action="{{ url_for('admin.settings') }}">
+          <!-- Registration -->
+          <h5 class="card-title mb-3">General</h5>
+
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input"
+                   type="checkbox"
+                   id="registration_enabled"
+                   name="registration_enabled"
+                   {% if registration_enabled %}checked{% endif %}>
+            <label class="form-check-label" for="registration_enabled">
+              Allow self-registration
+            </label>
+          </div>
+
+          <hr class="my-3">
+
+          <!-- DeepSeek / AI -->
+          <h5 class="card-title mb-3">AI Metadata (DeepSeek)</h5>
+
+          <div class="mb-3">
+            <label for="deepseek_api_key" class="form-label">
+              DeepSeek API key
+            </label>
+            <input type="password"
+                   class="form-control"
+                   id="deepseek_api_key"
+                   name="deepseek_api_key"
+                   value="{{ deepseek_api_key or '' }}"
+                   autocomplete="off"
+                   placeholder="sk-...">
+            <div class="form-text">
+              Used to auto-generate video titles and descriptions in the admin UI.
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="deepseek_system_prompt" class="form-label">System prompt</label>
+            <textarea
+              class="form-control"
+              id="deepseek_system_prompt"
+              name="deepseek_system_prompt"
+              rows="3"
+              placeholder="System instructions for the AI...">{{ deepseek_system_prompt or '' }}</textarea>
+            <div class="form-text">
+              Sent as the <strong>system</strong> message to DeepSeek.
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="deepseek_user_prompt_template" class="form-label">
+              User prompt template
+            </label>
+            <textarea
+              class="form-control"
+              id="deepseek_user_prompt_template"
+              name="deepseek_user_prompt_template"
+              rows="6"
+              placeholder="Use {filename} where the video file name should be inserted.">{{ deepseek_user_prompt_template or '' }}</textarea>
+            <div class="form-text">
+              This is the <strong>user</strong> prompt. The placeholder
+              <code>{filename}</code> will be replaced with the video file name.
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <!-- Branding -->
+          <h5 class="card-title mb-3">Branding</h5>
+
+          <div class="mb-3">
+            <label for="site_name" class="form-label">Website name</label>
+            <input type="text"
+                   class="form-control"
+                   id="site_name"
+                   name="site_name"
+                   value="{{ site_name or 'MyTube' }}"
+                   placeholder="MyTube">
+            <div class="form-text">
+              Used in the navbar, page titles, and other branding locations.
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="footer_text" class="form-label">Footer text</label>
+            <input type="text"
+                   class="form-control"
+                   id="footer_text"
+                   name="footer_text"
+                   value="{{ footer_text or '© MyTube' }}">
+            <div class="form-text">
+              Shown in the bottom footer of the site.
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <!-- Transcoding -->
+          <h5 class="card-title mb-3">Video transcoding</h5>
+
+          <div class="mb-3">
+            <label for="transcoding_backend" class="form-label">Backend</label>
+            <select class="form-select" id="transcoding_backend" name="transcoding_backend">
+              <option value="cpu" {% if transcoding_backend == 'cpu' %}selected{% endif %}>CPU only</option>
+              <option value="intel" {% if transcoding_backend == 'intel' %}selected{% endif %}>Intel (Quick Sync)</option>
+              <option value="amd" {% if transcoding_backend == 'amd' %}selected{% endif %}>AMD (VAAPI/AMF)</option>
+              <option value="nvidia" {% if transcoding_backend == 'nvidia' %}selected{% endif %}>NVIDIA (NVENC)</option>
+            </select>
+            <div class="form-text">
+              Controls which hardware acceleration ffmpeg will try to use for
+              <strong>real-time transcoding</strong> (1080p/720p/480p).
+              If the chosen backend fails, the server falls back to CPU.
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end mt-3">
+            <button type="submit" class="btn btn-primary">
+              Save Settings
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar notes -->
+  <div class="col-lg-4 col-xl-5 mt-3 mt-lg-0">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title mb-2">Tips</h6>
+        <ul class="small text-muted mb-0">
+          <li>Changing the <strong>website name</strong> updates the navbar and page titles.</li>
+          <li>DeepSeek settings affect the “AI title &amp; description” tools in the videos list.</li>
+          <li>Transcoding backend only affects real-time 1080p/720p/480p streams, not original file downloads.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

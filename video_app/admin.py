@@ -102,34 +102,103 @@ def _extract_json_block(text: str) -> str | None:
     return None
 
 
+# -------------------- Dashboard & Settings --------------------
+
+
 @admin_bp.route("/")
 @admin_required
 def dashboard():
     video_count = Video.query.count()
     user_count = User.query.count()
     cfg = AppConfig.query.first()
-    site_name, footer_text = _get_site_config()
 
-    deepseek_system_prompt = (
-        cfg.deepseek_system_prompt if cfg and cfg.deepseek_system_prompt else DEFAULT_DEEPSEEK_SYSTEM_PROMPT
-    )
-    deepseek_user_prompt_template = (
-        cfg.deepseek_user_prompt_template
-        if cfg and cfg.deepseek_user_prompt_template
-        else DEFAULT_DEEPSEEK_USER_PROMPT_TEMPLATE
-    )
+    transcoding_backend = (cfg.transcoding_backend if cfg and cfg.transcoding_backend else "cpu").lower()
+    if transcoding_backend not in ("cpu", "intel", "amd", "nvidia"):
+        transcoding_backend = "cpu"
+
+    registration_enabled = cfg.registration_enabled if cfg else True
+
+    site_name, footer_text = _get_site_config()
 
     return render_template(
         "admin/dashboard.html",
         video_count=video_count,
         user_count=user_count,
-        registration_enabled=cfg.registration_enabled if cfg else True,
-        deepseek_api_key=(cfg.deepseek_api_key if cfg and cfg.deepseek_api_key else ""),
+        registration_enabled=registration_enabled,
+        transcoding_backend=transcoding_backend,
+        site_name=site_name,
+        footer_text=footer_text,
+    )
+
+
+@admin_bp.route("/settings", methods=["GET", "POST"])
+@admin_required
+def settings():
+    """
+    Global settings page (registration, DeepSeek, branding, transcoding).
+    """
+    cfg = AppConfig.query.first()
+    if cfg is None:
+        cfg = AppConfig(registration_enabled=True, transcoding_backend="cpu")
+        db.session.add(cfg)
+        db.session.commit()
+
+    if request.method == "POST":
+        cfg.registration_enabled = bool(request.form.get("registration_enabled"))
+
+        deepseek_api_key = (request.form.get("deepseek_api_key") or "").strip()
+        cfg.deepseek_api_key = deepseek_api_key or None
+
+        cfg.deepseek_system_prompt = (
+            (request.form.get("deepseek_system_prompt") or "").strip()
+            or DEFAULT_DEEPSEEK_SYSTEM_PROMPT
+        )
+        cfg.deepseek_user_prompt_template = (
+            (request.form.get("deepseek_user_prompt_template") or "").strip()
+            or DEFAULT_DEEPSEEK_USER_PROMPT_TEMPLATE
+        )
+
+        cfg.site_name = (request.form.get("site_name") or "").strip() or None
+        cfg.footer_text = (request.form.get("footer_text") or "").strip() or None
+
+        backend = (request.form.get("transcoding_backend") or "cpu").strip().lower()
+        if backend not in ("cpu", "intel", "amd", "nvidia"):
+            backend = "cpu"
+        cfg.transcoding_backend = backend
+
+        db.session.commit()
+        flash("Settings updated.", "success")
+        return redirect(url_for("admin.settings"))
+
+    # GET: render settings form with current values
+    site_name, footer_text = _get_site_config()
+
+    deepseek_system_prompt = (
+        cfg.deepseek_system_prompt if cfg.deepseek_system_prompt else DEFAULT_DEEPSEEK_SYSTEM_PROMPT
+    )
+    deepseek_user_prompt_template = (
+        cfg.deepseek_user_prompt_template
+        if cfg.deepseek_user_prompt_template
+        else DEFAULT_DEEPSEEK_USER_PROMPT_TEMPLATE
+    )
+
+    transcoding_backend = (cfg.transcoding_backend if cfg.transcoding_backend else "cpu").lower()
+    if transcoding_backend not in ("cpu", "intel", "amd", "nvidia"):
+        transcoding_backend = "cpu"
+
+    return render_template(
+        "admin/settings.html",
+        registration_enabled=cfg.registration_enabled,
+        deepseek_api_key=(cfg.deepseek_api_key or ""),
         deepseek_system_prompt=deepseek_system_prompt,
         deepseek_user_prompt_template=deepseek_user_prompt_template,
         site_name=site_name,
         footer_text=footer_text,
+        transcoding_backend=transcoding_backend,
     )
+
+
+# -------------------- Videos --------------------
 
 
 @admin_bp.route("/videos")
@@ -310,6 +379,9 @@ def discover_videos():
     )
 
 
+# -------------------- Users --------------------
+
+
 @admin_bp.route("/users", methods=["GET", "POST"])
 @admin_required
 def manage_users():
@@ -400,37 +472,7 @@ def manage_users():
     )
 
 
-@admin_bp.route("/settings", methods=["POST"])
-@admin_required
-def settings():
-    """
-    Update global settings (registration_enabled, DeepSeek API key, prompts, branding).
-    """
-    cfg = AppConfig.query.first()
-    if cfg is None:
-        cfg = AppConfig(registration_enabled=True)
-        db.session.add(cfg)
-
-    cfg.registration_enabled = bool(request.form.get("registration_enabled"))
-
-    deepseek_api_key = (request.form.get("deepseek_api_key") or "").strip()
-    cfg.deepseek_api_key = deepseek_api_key or None
-
-    cfg.deepseek_system_prompt = (
-        (request.form.get("deepseek_system_prompt") or "").strip()
-        or DEFAULT_DEEPSEEK_SYSTEM_PROMPT
-    )
-    cfg.deepseek_user_prompt_template = (
-        (request.form.get("deepseek_user_prompt_template") or "").strip()
-        or DEFAULT_DEEPSEEK_USER_PROMPT_TEMPLATE
-    )
-
-    cfg.site_name = (request.form.get("site_name") or "").strip() or None
-    cfg.footer_text = (request.form.get("footer_text") or "").strip() or None
-
-    db.session.commit()
-    flash("Settings updated.", "success")
-    return redirect(url_for("admin.dashboard"))
+# -------------------- Video edit / AI / thumbnails --------------------
 
 
 @admin_bp.route("/videos/<int:video_id>/edit", methods=["GET", "POST"])
@@ -445,7 +487,12 @@ def edit_video(video_id):
 
         if not title:
             flash("Title cannot be empty.", "danger")
-            return render_template("admin/edit_video.html", video=video, site_name=site_name, footer_text=footer_text)
+            return render_template(
+                "admin/edit_video.html",
+                video=video,
+                site_name=site_name,
+                footer_text=footer_text,
+            )
 
         video.title = title
         video.description = description
@@ -496,7 +543,7 @@ def ai_video_metadata(video_id):
 
     if not cfg or not cfg.deepseek_api_key:
         flash(
-            "DeepSeek API key is not configured in Admin → Dashboard → Settings.",
+            "DeepSeek API key is not configured in Admin → Settings.",
             "danger",
         )
         return redirect(request.referrer or url_for("admin.edit_video", video_id=video.id))

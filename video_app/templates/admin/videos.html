@@ -378,7 +378,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   applyFilter();
 
-  // --------- BULK AI FEATURE ---------
+  // --------- SHARED OVERLAY UTILS ---------
   const aiBulkBtn = document.getElementById("aiBulkBtn");
   const aiOverlay = document.getElementById("aiOverlay");
   const aiProgressCircle = document.getElementById("aiProgressCircle");
@@ -417,6 +417,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  // --------- BULK AI FEATURE (5 at once) ---------
   if (aiBulkBtn) {
     aiBulkBtn.addEventListener("click", async function () {
       // Collect rows that "need AI"
@@ -430,39 +431,98 @@ document.addEventListener("DOMContentLoaded", function () {
 
       aiCancelRequested = false;
       setOverlayVisible(aiOverlay, true);
-      setProgress(aiProgressCircle, aiProgressPercent, aiProgressCounter, aiProgressCurrent, 0, total, "Preparing…");
+      setProgress(
+        aiProgressCircle,
+        aiProgressPercent,
+        aiProgressCounter,
+        aiProgressCurrent,
+        0,
+        total,
+        "Preparing…"
+      );
 
       let completed = 0;
+      let nextIndex = 0;
 
-      for (const row of candidates) {
-        if (aiCancelRequested) {
-          setProgress(aiProgressCircle, aiProgressPercent, aiProgressCounter, aiProgressCurrent, completed, total, "Cancelled by user.");
-          break;
+      // How many AI calls in parallel
+      const CONCURRENCY = 5;
+
+      async function worker() {
+        while (!aiCancelRequested) {
+          const idx = nextIndex++;
+          if (idx >= total) break;
+
+          const row = candidates[idx];
+          const videoId = row.dataset.videoId;
+          const aiUrl = row.dataset.aiUrl;
+          const filename = row.children[2].innerText.trim();
+          const title = row.children[1].innerText.trim();
+          const label = title || filename || `Video #${videoId}`;
+
+          setProgress(
+            aiProgressCircle,
+            aiProgressPercent,
+            aiProgressCounter,
+            aiProgressCurrent,
+            completed,
+            total,
+            `Processing: ${label}`
+          );
+
+          try {
+            const formData = new FormData();
+            await fetch(aiUrl, {
+              method: "POST",
+              body: formData,
+              credentials: "same-origin",
+            });
+
+            row.dataset.needsAi = "0";
+            completed += 1;
+            setProgress(
+              aiProgressCircle,
+              aiProgressPercent,
+              aiProgressCounter,
+              aiProgressCurrent,
+              completed,
+              total,
+              `Processed: ${label}`
+            );
+          } catch (err) {
+            console.error("AI metadata error for video", videoId, err);
+            completed += 1;
+            setProgress(
+              aiProgressCircle,
+              aiProgressPercent,
+              aiProgressCounter,
+              aiProgressCurrent,
+              completed,
+              total,
+              `Error on: ${label}`
+            );
+          }
         }
 
-        const videoId = row.dataset.videoId;
-        const aiUrl = row.dataset.aiUrl;
-        const filename = row.children[2].innerText.trim();
-        const title = row.children[1].innerText.trim();
-        const label = title || filename || `Video #${videoId}`;
-        setProgress(aiProgressCircle, aiProgressPercent, aiProgressCounter, aiProgressCurrent, completed, total, `Processing: ${label}`);
-
-        try {
-          const formData = new FormData();
-          await fetch(aiUrl, {
-            method: "POST",
-            body: formData,
-            credentials: "same-origin",
-          });
-          row.dataset.needsAi = "0";
-          completed += 1;
-          setProgress(aiProgressCircle, aiProgressPercent, aiProgressCounter, aiProgressCurrent, completed, total, `Processed: ${label}`);
-        } catch (err) {
-          console.error("AI metadata error for video", videoId, err);
-          completed += 1; // still advance to avoid infinite loop
-          setProgress(aiProgressCircle, aiProgressPercent, aiProgressCounter, aiProgressCurrent, completed, total, `Error on: ${label}`);
+        if (aiCancelRequested) {
+          setProgress(
+            aiProgressCircle,
+            aiProgressPercent,
+            aiProgressCounter,
+            aiProgressCurrent,
+            completed,
+            total,
+            "Cancelled by user."
+          );
         }
       }
+
+      const workerCount = Math.min(CONCURRENCY, total);
+      const workerPromises = [];
+      for (let i = 0; i < workerCount; i++) {
+        workerPromises.push(worker());
+      }
+
+      await Promise.all(workerPromises);
 
       setTimeout(function () {
         setOverlayVisible(aiOverlay, false);
@@ -490,7 +550,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (thumbBulkBtn) {
     thumbBulkBtn.addEventListener("click", async function () {
-      // Regenerate thumbnails for ALL videos in the table
       const candidates = rows.slice();
       const total = candidates.length;
 
@@ -501,13 +560,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
       thumbCancelRequested = false;
       setOverlayVisible(thumbOverlay, true);
-      setProgress(thumbProgressCircle, thumbProgressPercent, thumbProgressCounter, thumbProgressCurrent, 0, total, "Preparing…");
+      setProgress(
+        thumbProgressCircle,
+        thumbProgressPercent,
+        thumbProgressCounter,
+        thumbProgressCurrent,
+        0,
+        total,
+        "Preparing…"
+      );
 
       let completed = 0;
 
       for (const row of candidates) {
         if (thumbCancelRequested) {
-          setProgress(thumbProgressCircle, thumbProgressPercent, thumbProgressCounter, thumbProgressCurrent, completed, total, "Cancelled by user.");
+          setProgress(
+            thumbProgressCircle,
+            thumbProgressPercent,
+            thumbProgressCounter,
+            thumbProgressCurrent,
+            completed,
+            total,
+            "Cancelled by user."
+          );
           break;
         }
 
@@ -516,7 +591,15 @@ document.addEventListener("DOMContentLoaded", function () {
         const filename = row.children[2].innerText.trim();
         const title = row.children[1].innerText.trim();
         const label = title || filename || `Video #${videoId}`;
-        setProgress(thumbProgressCircle, thumbProgressPercent, thumbProgressCounter, thumbProgressCurrent, completed, total, `Processing: ${label}`);
+        setProgress(
+          thumbProgressCircle,
+          thumbProgressPercent,
+          thumbProgressCounter,
+          thumbProgressCurrent,
+          completed,
+          total,
+          `Processing: ${label}`
+        );
 
         try {
           const resp = await fetch(thumbUrl, {
@@ -537,20 +620,43 @@ document.addEventListener("DOMContentLoaded", function () {
 
           completed += 1;
           if (ok) {
-            setProgress(thumbProgressCircle, thumbProgressPercent, thumbProgressCounter, thumbProgressCurrent, completed, total, `Processed: ${label}`);
+            setProgress(
+              thumbProgressCircle,
+              thumbProgressPercent,
+              thumbProgressCounter,
+              thumbProgressCurrent,
+              completed,
+              total,
+              `Processed: ${label}`
+            );
           } else {
-            setProgress(thumbProgressCircle, thumbProgressPercent, thumbProgressCounter, thumbProgressCurrent, completed, total, `Error on: ${label}`);
+            setProgress(
+              thumbProgressCircle,
+              thumbProgressPercent,
+              thumbProgressCounter,
+              thumbProgressCurrent,
+              completed,
+              total,
+              `Error on: ${label}`
+            );
           }
         } catch (err) {
           console.error("Thumbnail regen error for video", videoId, err);
           completed += 1;
-          setProgress(thumbProgressCircle, thumbProgressPercent, thumbProgressCounter, thumbProgressCurrent, completed, total, `Error on: ${label}`);
+          setProgress(
+            thumbProgressCircle,
+            thumbProgressPercent,
+            thumbProgressCounter,
+            thumbProgressCurrent,
+            completed,
+            total,
+            `Error on: ${label}`
+          );
         }
       }
 
       setTimeout(function () {
         setOverlayVisible(thumbOverlay, false);
-        // reload page to ensure any cached thumbnails / data attributes are fresh
         window.location.reload();
       }, 600);
     });

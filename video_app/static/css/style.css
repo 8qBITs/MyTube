@@ -115,16 +115,41 @@ a:focus {
   color: #93c5fd;
 }
 
+/* =========================================================
+   Video layout / player sizing
+   ========================================================= */
+
 /* Video element background */
 video {
   background-color: #000;
 }
 
-/* Make main video behave like YouTube: stable height, no jump */
-.video-main {
+/* 
+  Shell that ENFORCES 16:9 and keeps the player from becoming a tall 9:16 column.
+  Used in video_detail.html as wrapper around <video>.
+*/
+.mt-video-shell {
+  position: relative;
   width: 100%;
   max-width: 100%;
   aspect-ratio: 16 / 9;
+  background-color: #000;
+  overflow: hidden;
+}
+
+/* Make the Video.js player fill the shell exactly */
+.mt-video-shell .video-js,
+.mt-video-shell .video-main {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Main video element: keep it simple, the shell controls aspect ratio */
+.video-main {
+  width: 100%;
+  max-width: 100%;
   display: block;
   object-fit: contain;
   background-color: #000;

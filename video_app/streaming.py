@@ -2,6 +2,7 @@ import os
 import subprocess
 import uuid
 from typing import Optional
+
 from flask import Response, request, abort, current_app
 
 
@@ -20,10 +21,28 @@ def guess_mime_type(filename):
     return "application/octet-stream"
 
 
-def range_request_response(video_path: str, content_type: str = None):
+# ------------------ Range-based original streaming ------------------
+
+
+def range_request_response(video_path: str, content_type: str = None, quality: Optional[int] = None):
+    """
+    Stream a video file.
+
+    - If `quality` is None, behaves like the original implementation:
+      raw file bytes with HTTP range support.
+    - If `quality` is one of {1080, 720, 480} and ffmpeg is available,
+      attempts real-time transcoding down to <= that height (never upscales)
+      and streams an MP4. In transcoding mode, Range headers are ignored
+      and we return a regular 200 response with chunked output.
+    """
     if not os.path.exists(video_path):
         abort(404)
 
+    # If a valid quality is requested and ffmpeg is present, use real-time transcoding.
+    if quality in (1080, 720, 480) and _ffmpeg_available():
+        return _transcoded_stream_response(video_path, target_height=quality)
+
+    # Fallback: original range-based streaming from disk.
     file_size = os.path.getsize(video_path)
     range_header = request.headers.get("Range", None)
 
@@ -227,3 +246,144 @@ def generate_video_thumbnail(video_path: str) -> Optional[str]:
         return None
 
     return thumb_name
+
+
+# ------------------ Real-time transcoding helpers ------------------
+
+
+def _get_transcoding_backend() -> str:
+    """
+    Read the configured transcoding backend from AppConfig.
+
+    Returns one of: "cpu", "intel", "amd", "nvidia".
+    Defaults to "cpu" if unset or invalid.
+    """
+    try:
+        from .models import AppConfig  # local import to avoid circulars
+        cfg = AppConfig.query.first()
+        backend = (cfg.transcoding_backend if cfg and cfg.transcoding_backend else "cpu").lower()
+    except Exception:
+        backend = "cpu"
+
+    if backend not in ("cpu", "intel", "amd", "nvidia"):
+        backend = "cpu"
+    return backend
+
+
+def _build_ffmpeg_transcode_cmd(video_path: str, target_height: int, backend: str):
+    """
+    Build an ffmpeg command to transcode `video_path` to MP4 with H.264 video + AAC audio.
+
+    - target_height is one of 1080/720/480.
+    - We never upscale: use scale=-2:min(ih,target_height) so output height is
+      at most both the input height and target_height.
+    """
+    # Base scale filter: keep aspect ratio, width divisible by 2, height <= min(ih, target_height)
+    scale_filter = f"scale=-2:min(ih,{int(target_height)})"
+
+    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error"]
+
+    vcodec = "libx264"  # CPU default
+    hwaccel_args = []
+
+    if backend == "nvidia":
+        # NVIDIA NVENC
+        vcodec = "h264_nvenc"
+        hwaccel_args = ["-hwaccel", "cuda"]
+    elif backend == "intel":
+        # Intel Quick Sync
+        vcodec = "h264_qsv"
+        hwaccel_args = ["-hwaccel", "qsv"]
+    elif backend == "amd":
+        # Generic AMD path via VAAPI; may need server-specific tweaking
+        vcodec = "h264_vaapi"
+        hwaccel_args = ["-hwaccel", "vaapi"]
+
+    # Assemble command
+    cmd += hwaccel_args
+    cmd += [
+        "-i",
+        video_path,
+        "-vf",
+        scale_filter,
+        "-c:v",
+        vcodec,
+        "-preset",
+        "fast",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        "-ac",
+        "2",
+        "-movflags",
+        "frag_keyframe+empty_moov",
+        "-f",
+        "mp4",
+        "-",
+    ]
+    return cmd
+
+
+def _transcoded_stream_response(video_path: str, target_height: int):
+    """
+    Stream a live-transcoded MP4 at up to `target_height` (1080/720/480).
+
+    - Honors the configured hardware backend (cpu/intel/amd/nvidia).
+    - Never upscales above source resolution.
+    - If hardware encoding fails to start, falls back to CPU libx264.
+    """
+    backend = _get_transcoding_backend()
+    cmd = _build_ffmpeg_transcode_cmd(video_path, target_height, backend)
+
+    def start_process(cmd_list):
+        try:
+            return subprocess.Popen(
+                cmd_list,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            current_app.logger.exception("ffmpeg start error (%s): %s", backend, exc)
+            return None
+
+    proc = start_process(cmd)
+
+    # If hardware backend failed to start, fall back to CPU libx264.
+    if not proc and backend != "cpu":
+        current_app.logger.warning("Falling back to CPU transcoding for %s", video_path)
+        cpu_cmd = _build_ffmpeg_transcode_cmd(video_path, target_height, "cpu")
+        proc = start_process(cpu_cmd)
+
+    if not proc:
+        # Last resort: just fall back to original range-based streaming
+        current_app.logger.error("Failed to start ffmpeg for transcoding; falling back to raw file stream.")
+        return range_request_response(video_path, guess_mime_type(video_path), quality=None)
+
+    def generate():
+        try:
+            while True:
+                chunk = proc.stdout.read(8192)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            try:
+                if proc.stdout:
+                    proc.stdout.close()
+            except Exception:
+                pass
+            try:
+                proc.kill()
+            except Exception:
+                pass
+
+    rv = Response(
+        generate(),
+        status=200,
+        mimetype="video/mp4",
+        direct_passthrough=True,
+    )
+    # We don't know Content-Length in advance for live transcoding.
+    # Do not advertise range support here.
+    return rv

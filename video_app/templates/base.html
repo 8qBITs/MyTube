@@ -24,6 +24,12 @@
     href="https://vjs.zencdn.net/8.10.0/video-js.css"
   >
 
+  <!-- 🔽 NEW: Silvermine videojs-quality-selector CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/@silvermine/videojs-quality-selector/dist/css/quality-selector.css"
+  >
+
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
   <!-- Sticky footer layout -->
@@ -143,6 +149,9 @@
 <!-- Video.js JS -->
 <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
 
+<!-- 🔽 NEW: Silvermine quality selector plugin JS (must be AFTER video.min.js) -->
+<script src="https://unpkg.com/@silvermine/videojs-quality-selector/dist/js/silvermine-videojs-quality-selector.min.js"></script>
+
 <!-- Video.js init with autoplay + persistent volume + mobile double-tap seek -->
 <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -214,6 +223,15 @@
         controls: true,
         preload: 'auto'
       });
+
+      // 🔽 NEW: add the quality selector button to the control bar
+      try {
+        if (player.controlBar && typeof player.controlBar.addChild === 'function') {
+          player.controlBar.addChild('QualitySelector');
+        }
+      } catch (e) {
+        console.error('QualitySelector init error:', e);
+      }
 
       player.ready(function () {
         // Default to muted for autoplay on mobile

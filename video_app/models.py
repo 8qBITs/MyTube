@@ -28,6 +28,9 @@ class AppConfig(db.Model):
     site_name = db.Column(db.String(255), nullable=True)
     footer_text = db.Column(db.String(255), nullable=True)
 
+    # Video transcoding backend: cpu / intel / amd / nvidia
+    transcoding_backend = db.Column(db.String(32), nullable=True)
+
 
 class User(db.Model):
     __tablename__ = "users"
@@ -266,6 +269,7 @@ def init_default_admin_and_config():
             ),
             site_name="MyTube",
             footer_text="© MyTube",
+            transcoding_backend="cpu",
         )
         db.session.add(cfg)
 

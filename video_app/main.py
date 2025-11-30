@@ -75,11 +75,14 @@ def index():
         video_ids = [h.video_id for h in history_entries]
         if not video_ids:
             videos = []
+            last_watched_map = {}
         else:
             videos_by_id = {
                 v.id: v for v in Video.query.filter(Video.id.in_(video_ids)).all()
             }
             videos = [videos_by_id[vid] for vid in video_ids if vid in videos_by_id]
+            # Map for last watched times
+            last_watched_map = {h.video_id: h.last_watched_at for h in history_entries}
 
     elif is_liked_view:
         # Liked videos tab
@@ -96,10 +99,11 @@ def index():
                 v.id: v for v in Video.query.filter(Video.id.in_(video_ids)).all()
             }
             videos = [videos_by_id[vid] for vid in video_ids if vid in videos_by_id]
-
+        last_watched_map = {}
     else:
         # Home: all videos
         videos = Video.query.order_by(Video.uploaded_at.desc()).all()
+        last_watched_map = {}
 
     # Search filter (in-memory on already selected list)
     if query:
@@ -158,6 +162,7 @@ def index():
         per_page=per_page,
         total_pages=total_pages,
         sort=sort,
+        last_watched_map=last_watched_map,
     )
 
 
@@ -392,6 +397,11 @@ def stream_video(video_id):
     """
     Stream a video file with HTTP range support, addressed by video_id.
     Matches: url_for('main.stream_video', video_id=video.id)
+
+    Optional query parameter:
+      ?q=1080 | 720 | 480  → real-time transcoding down to that height.
+    When q is not provided or invalid, the original file is streamed
+    exactly as before (with full Range support).
     """
     user = current_user()
     if user.is_banned:
@@ -407,7 +417,18 @@ def stream_video(video_id):
     # Use explicit content_type if set, otherwise guess by filename (AVI support, etc.)
     content_type = video.content_type or guess_mime_type(video.filename)
 
-    return range_request_response(video_path, content_type)
+    # Optional quality parameter: 1080 / 720 / 480 for real-time transcoding.
+    quality_param = request.args.get("q")
+    quality = None
+    if quality_param:
+        try:
+            q_val = int(quality_param)
+            if q_val in (1080, 720, 480):
+                quality = q_val
+        except ValueError:
+            quality = None
+
+    return range_request_response(video_path, content_type, quality=quality)
 
 
 @main_bp.route("/thumbnails/<path:thumb_name>")
