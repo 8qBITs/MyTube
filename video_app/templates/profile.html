@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Profile - MyTube{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10 col-xl-9">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <div>
+        <h2 class="mb-0">Your Profile</h2>
+        <p class="text-muted small mb-0">
+          Manage how you appear to others and keep your account secure.
+        </p>
+      </div>
+      <div class="text-end">
+        <a href="{{ url_for('main.user_profile', user_id=user.id) }}"
+           class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-person-lines-fill me-1"></i>
+          View public profile
+        </a>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <!-- Left column: account + password in ONE card -->
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Account</h5>
+
+            <!-- Basic account info -->
+            <p class="mb-1"><strong>Email:</strong> {{ user.email }}</p>
+            <p class="text-muted mb-1 small">
+              Joined: {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '' }}
+            </p>
+            {% if user.registered_ip %}
+            <p class="text-muted mb-3 small">
+              Registered IP: {{ user.registered_ip }}
+            </p>
+            {% endif %}
+
+            <hr>
+
+            <!-- Change password form now lives inside this Account card -->
+            <h6 class="mb-2">Change password</h6>
+            <p class="text-muted small">
+              Use a strong, unique password to keep your account safe.
+            </p>
+            <form method="post">
+              <input type="hidden" name="form_type" value="password">
+              <div class="mb-2">
+                <label class="form-label small">Current Password</label>
+                <input type="password" class="form-control form-control-sm" name="current_password" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label small">New Password</label>
+                <input type="password" class="form-control form-control-sm" name="new_password" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small">Confirm New Password</label>
+                <input type="password" class="form-control form-control-sm" name="confirm_password" required>
+              </div>
+              <button type="submit" class="btn btn-primary w-100 btn-sm">
+                Update Password
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: public profile & privacy -->
+      <div class="col-md-8">
+        <div class="card mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Public Profile</h5>
+            <p class="text-muted small">
+              If you set a username, other users will be able to identify you in the comments.
+              If you leave it empty, your comments will appear as
+              <strong>Anonymous</strong> (unless you explicitly check
+              “post as anonymous” when commenting).
+            </p>
+
+            <form method="post" class="mt-2">
+              <input type="hidden" name="form_type" value="profile">
+
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Username</label>
+                  <input type="text"
+                         class="form-control"
+                         name="username"
+                         value="{{ user.username or '' }}"
+                         placeholder="Optional username">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Gender</label>
+                  <select class="form-select" name="gender">
+                    <option value="" {% if not user.gender %}selected{% endif %}>Prefer not to say</option>
+                    <option value="female" {% if user.gender == 'female' %}selected{% endif %}>Female</option>
+                    <option value="male" {% if user.gender == 'male' %}selected{% endif %}>Male</option>
+                    <option value="non-binary" {% if user.gender == 'non-binary' %}selected{% endif %}>Non-binary</option>
+                    <option value="other" {% if user.gender == 'other' %}selected{% endif %}>Other</option>
+                  </select>
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label">About me</label>
+                  <textarea class="form-control"
+                            name="about_me"
+                            rows="4"
+                            placeholder="Tell others a bit about yourself (optional)…">{{ user.about_me or '' }}</textarea>
+                </div>
+              </div>
+
+              <hr class="my-3">
+
+              <h6 class="mb-2">Privacy</h6>
+              <p class="text-muted small mb-2">
+                Control what others can see on your public profile page.
+                You will always see your own data even if you keep it private from others.
+              </p>
+
+              <div class="form-check mb-2">
+                <input class="form-check-input"
+                       type="checkbox"
+                       id="liked_videos_public"
+                       name="liked_videos_public"
+                       {% if user.liked_videos_public %}checked{% endif %}>
+                <label class="form-check-label small" for="liked_videos_public">
+                  Make my <strong>liked videos</strong> visible on my public profile
+                </label>
+              </div>
+
+              <div class="form-check mb-3">
+                <input class="form-check-input"
+                       type="checkbox"
+                       id="comments_public"
+                       name="comments_public"
+                       {% if user.comments_public %}checked{% endif %}>
+                <label class="form-check-label small" for="comments_public">
+                  Make a list of my <strong>comments</strong> visible on my public profile
+                </label>
+              </div>
+
+              <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">
+                  Save Profile
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <p class="mb-1 small text-muted">
+              Your public profile is visible to other logged-in users.
+            </p>
+            <p class="mb-0 small text-muted">
+              To see how it looks, click the <strong>“View public profile”</strong> button at the top.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

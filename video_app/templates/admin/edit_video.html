@@ -1,0 +1,110 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Edit Video - Admin - MyTube{% endblock %}
+
+{% block admin_content %}
+<h2 class="mb-3">Edit Video #{{ video.id }}</h2>
+
+<div class="row">
+  <div class="col-md-8 mb-3">
+    <div class="card">
+      <div class="card-body">
+        <form method="post">
+          <div class="mb-3">
+            <label for="title" class="form-label">Title</label>
+            <input type="text"
+                   class="form-control"
+                   id="title"
+                   name="title"
+                   value="{{ video.title }}"
+                   required>
+          </div>
+
+          <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control"
+                      id="description"
+                      name="description"
+                      rows="6"
+                      placeholder="Optional description…">{{ video.description or '' }}</textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">File name</label>
+            <input type="text"
+                   class="form-control"
+                   value="{{ video.filename }}"
+                   readonly>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 justify-content-between">
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">
+                Save
+              </button>
+              <a href="{{ url_for('admin.videos') }}" class="btn btn-outline-secondary">
+                Cancel
+              </a>
+            </div>
+
+            <form method="post"
+                  action="{{ url_for('admin.ai_video_metadata', video_id=video.id) }}">
+              <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-stars me-1"></i>
+                Apply AI title &amp; description
+              </button>
+            </form>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Preview</h5>
+
+        {% if video.thumbnail_filename %}
+        <div class="mb-3">
+          <div class="ratio ratio-16x9 border rounded overflow-hidden">
+            <img src="{{ url_for('main.thumbnail', thumb_name=video.thumbnail_filename) }}"
+                 alt="Thumbnail"
+                 class="w-100 h-100"
+                 style="object-fit: cover;">
+          </div>
+          <div class="text-muted small mt-1">
+            Current thumbnail
+          </div>
+        </div>
+        {% else %}
+        <div class="mb-3">
+          <div class="ratio ratio-16x9 border rounded d-flex align-items-center justify-content-center bg-dark text-white">
+            <span class="fs-5">No thumbnail</span>
+          </div>
+        </div>
+        {% endif %}
+
+        <p class="mb-1">
+          <strong>Uploaded:</strong>
+          {{ video.uploaded_at.strftime('%Y-%m-%d %H:%M') if video.uploaded_at else 'Unknown' }}
+        </p>
+        <p class="mb-1">
+          <strong>Views:</strong> {{ video.view_count or 0 }}
+        </p>
+        {% if video.uploader %}
+        <p class="mb-0">
+          <strong>Uploader:</strong> {{ video.uploader.email }}
+        </p>
+        {% endif %}
+      </div>
+      <div class="card-footer text-end">
+        <a href="{{ url_for('main.video_detail', video_id=video.id) }}"
+           class="btn btn-sm btn-outline-info"
+           target="_blank">
+          View on site
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

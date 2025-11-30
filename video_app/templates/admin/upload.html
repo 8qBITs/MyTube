@@ -1,0 +1,29 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Upload Video - Admin - MyTube{% endblock %}
+
+{% block admin_content %}
+<h2 class="mb-3">Upload Video</h2>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="form-label">Title</label>
+        <input class="form-control" type="text" name="title" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Description (optional)</label>
+        <textarea class="form-control" name="description" rows="3"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Video File</label>
+        <input class="form-control" type="file" name="file" accept="video/*" required>
+        <div class="form-text">
+          Maximum size: 15 GB.
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit">Upload</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

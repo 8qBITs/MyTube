@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}{{ profile_user.username or 'User Profile' }} - {{ site_name or 'MyTube' }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10 col-xl-9">
+    <div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+      <div>
+        <h2 class="mb-0">
+          {% if profile_user.username %}
+            {{ profile_user.username }}
+          {% else %}
+            User #{{ profile_user.id }}
+          {% endif %}
+        </h2>
+        <p class="text-muted small mb-0">
+          Member since {{ profile_user.created_at.strftime('%Y-%m-%d') if profile_user.created_at else 'Unknown' }}
+        </p>
+      </div>
+      <div class="ms-auto">
+        {% if is_owner %}
+          <a href="{{ url_for('auth.profile') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-gear me-1"></i> Edit profile
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="me-3">
+                <i class="bi bi-person-circle fs-1 text-muted"></i>
+              </div>
+              <div>
+                {% if profile_user.username %}
+                  <div class="fw-semibold">{{ profile_user.username }}</div>
+                {% else %}
+                  <div class="fw-semibold">User #{{ profile_user.id }}</div>
+                {% endif %}
+                <div class="small text-muted">
+                  Joined {{ profile_user.created_at.strftime('%Y-%m-%d') if profile_user.created_at else 'Unknown' }}
+                </div>
+              </div>
+            </div>
+
+            {% if profile_user.gender %}
+              <p class="mb-1"><strong>Gender:</strong>
+                {% if profile_user.gender == 'female' %}Female{% elif profile_user.gender == 'male' %}Male{% elif profile_user.gender == 'non-binary' %}Non-binary{% elif profile_user.gender == 'other' %}Other{% else %}{{ profile_user.gender }}{% endif %}
+              </p>
+            {% endif %}
+
+            {% if profile_user.about_me %}
+              <hr>
+              <p class="mb-0" style="white-space: pre-wrap;">
+                {{ profile_user.about_me }}
+              </p>
+            {% else %}
+              <p class="text-muted small mb-0">
+                {% if is_owner %}
+                  You haven't written anything in your "About me" yet.
+                {% else %}
+                  This user hasn't written anything in their "About me".
+                {% endif %}
+              </p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-8">
+        <!-- Liked videos -->
+        <div class="card mb-3">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Liked videos</strong>
+            {% if is_owner %}
+              <span class="badge bg-light text-muted border">
+                {% if profile_user.liked_videos_public %}
+                  Visible to others
+                {% else %}
+                  Private to you
+                {% endif %}
+              </span>
+            {% endif %}
+          </div>
+          <div class="card-body">
+            {% if show_liked_to_viewer %}
+              {% if liked_videos %}
+                <div class="row row-cols-1 row-cols-sm-2 g-3">
+                  {% for video in liked_videos %}
+                  <div class="col d-flex">
+                    <div class="card video-card w-100">
+                      <a href="{{ url_for('main.video_detail', video_id=video.id) }}"
+                         class="text-decoration-none text-reset">
+                        <div class="video-thumb-wrap">
+                          {% if video.thumbnail_filename %}
+                            <img src="{{ url_for('main.thumbnail', thumb_name=video.thumbnail_filename) }}"
+                                 alt="{{ video.title }}">
+                          {% else %}
+                            <div class="thumb-placeholder d-flex align-items-center justify-content-center text-white">
+                              <span class="fs-3">▶</span>
+                            </div>
+                          {% endif %}
+                        </div>
+                      </a>
+                      <div class="card-body">
+                        <h6 class="mb-1 video-card-title">
+                          {{ video.title }}
+                        </h6>
+                        <p class="card-text small text-muted mb-0">
+                          {{ video.view_count or 0 }} view{{ (video.view_count or 0) != 1 and 's' or '' }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+
+                {% if liked_total_pages > 1 %}
+                <nav aria-label="Liked videos pagination" class="mt-3">
+                  <ul class="pagination pagination-sm justify-content-center mb-0">
+                    <li class="page-item {% if liked_page <= 1 %}disabled{% endif %}">
+                      <a class="page-link"
+                         href="{{ url_for('main.user_profile',
+                                          user_id=profile_user.id,
+                                          liked_page=liked_page-1,
+                                          comments_page=comments_page) }}">&laquo;</a>
+                    </li>
+                    {% for p in range(1, liked_total_pages + 1) %}
+                    <li class="page-item {% if p == liked_page %}active{% endif %}">
+                      <a class="page-link"
+                         href="{{ url_for('main.user_profile',
+                                          user_id=profile_user.id,
+                                          liked_page=p,
+                                          comments_page=comments_page) }}">{{ p }}</a>
+                    </li>
+                    {% endfor %}
+                    <li class="page-item {% if liked_page >= liked_total_pages %}disabled{% endif %}">
+                      <a class="page-link"
+                         href="{{ url_for('main.user_profile',
+                                          user_id=profile_user.id,
+                                          liked_page=liked_page+1,
+                                          comments_page=comments_page) }}">&raquo;</a>
+                    </li>
+                  </ul>
+                </nav>
+                {% endif %}
+              {% else %}
+                <p class="text-muted mb-0">
+                  {% if is_owner %}
+                    You haven't liked any videos yet.
+                  {% else %}
+                    This user hasn't liked any videos yet.
+                  {% endif %}
+                </p>
+              {% endif %}
+            {% else %}
+              <p class="text-muted mb-0">
+                {% if is_owner %}
+                  Your liked videos are currently hidden from others.
+                  You can change this on the <a href="{{ url_for('auth.profile') }}">profile settings</a> page.
+                {% else %}
+                  This user keeps their liked videos private.
+                {% endif %}
+              </p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Comments -->
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Comments</strong>
+            {% if is_owner %}
+              <span class="badge bg-light text-muted border">
+                {% if profile_user.comments_public %}
+                  Visible to others
+                {% else %}
+                  Private to you
+                {% endif %}
+              </span>
+            {% endif %}
+          </div>
+          <div class="card-body">
+            {% if show_comments_to_viewer %}
+              {% if user_comments %}
+                <div class="list-group list-group-flush">
+                  {% for c in user_comments %}
+                  <div class="list-group-item px-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div class="small text-muted">
+                        On
+                        <a href="{{ url_for('main.video_detail', video_id=c.video_id) }}"
+                           class="text-decoration-none">
+                          {{ c.video.title if c.video else 'Video #' ~ c.video_id }}
+                        </a>
+                      </div>
+                      <div class="small text-muted">
+                        {{ c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '' }}
+                      </div>
+                    </div>
+                    <div class="mt-1 small" style="white-space: pre-wrap;">
+                      {{ c.text }}
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+
+                {% if comments_total_pages > 1 %}
+                <nav aria-label="Comments pagination" class="mt-3">
+                  <ul class="pagination pagination-sm justify-content-center mb-0">
+                    <li class="page-item {% if comments_page <= 1 %}disabled{% endif %}">
+                      <a class="page-link"
+                         href="{{ url_for('main.user_profile',
+                                          user_id=profile_user.id,
+                                          liked_page=liked_page,
+                                          comments_page=comments_page-1) }}">&laquo;</a>
+                    </li>
+                    {% for p in range(1, comments_total_pages + 1) %}
+                    <li class="page-item {% if p == comments_page %}active{% endif %}">
+                      <a class="page-link"
+                         href="{{ url_for('main.user_profile',
+                                          user_id=profile_user.id,
+                                          liked_page=liked_page,
+                                          comments_page=p) }}">{{ p }}</a>
+                    </li>
+                    {% endfor %}
+                    <li class="page-item {% if comments_page >= comments_total_pages %}disabled{% endif %}">
+                      <a class="page-link"
+                         href="{{ url_for('main.user_profile',
+                                          user_id=profile_user.id,
+                                          liked_page=liked_page,
+                                          comments_page=comments_page+1) }}">&raquo;</a>
+                    </li>
+                  </ul>
+                </nav>
+                {% endif %}
+              {% else %}
+                <p class="text-muted mb-0">
+                  {% if is_owner %}
+                    You haven't posted any non-anonymous comments yet.
+                  {% else %}
+                    This user hasn't posted any public comments yet.
+                  {% endif %}
+                </p>
+              {% endif %}
+            {% else %}
+              <p class="text-muted mb-0">
+                {% if is_owner %}
+                  Your comments list is currently hidden from others.
+                  You can change this on the <a href="{{ url_for('auth.profile') }}">profile settings</a> page.
+                {% else %}
+                  This user keeps their comments list private.
+                {% endif %}
+              </p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

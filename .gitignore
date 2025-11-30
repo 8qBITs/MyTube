@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Flask cache / instance
+instance/
+*.db
+*.sqlite3
+
+# Uploaded videos and thumbnails
+video_uploads/
+thumbnails/
+
+# Logs
+*.log
+
+# Ignore ALL .zip and .txt files
+*.zip
+*.txt
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

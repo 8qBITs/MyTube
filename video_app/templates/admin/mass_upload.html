@@ -1,0 +1,127 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Mass Upload - Admin - MyTube{% endblock %}
+
+{% block admin_content %}
+<h2 class="mb-3">Mass Upload Videos</h2>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <p class="mb-2">
+      Select multiple video files to upload. They will be uploaded sequentially
+      and each will automatically use its filename (without extension) as the title.
+    </p>
+    <div class="mb-3">
+      <input type="file" id="massUploadInput" class="form-control" multiple accept="video/*">
+    </div>
+    <button id="startMassUploadBtn" class="btn btn-primary" type="button">
+      Start Upload
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <strong>Upload Queue</strong>
+  </div>
+  <div class="card-body">
+    <div id="massUploadStatus" class="small text-muted mb-2">
+      No files queued.
+    </div>
+    <ul id="massUploadList" class="list-group list-group-flush small"></ul>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const input = document.getElementById("massUploadInput");
+  const startBtn = document.getElementById("startMassUploadBtn");
+  const statusEl = document.getElementById("massUploadStatus");
+  const listEl = document.getElementById("massUploadList");
+
+  let files = [];
+  let currentIndex = 0;
+  let uploading = false;
+
+  input.addEventListener("change", function () {
+    files = Array.from(this.files || []);
+    currentIndex = 0;
+    listEl.innerHTML = "";
+    if (!files.length) {
+      statusEl.textContent = "No files queued.";
+      return;
+    }
+    statusEl.textContent = files.length + " file(s) queued.";
+    files.forEach((file, idx) => {
+      const li = document.createElement("li");
+      li.className = "list-group-item d-flex justify-content-between align-items-center";
+      li.dataset.index = idx;
+      li.innerHTML = `
+        <span class="text-truncate" style="max-width: 70%;">${file.name}</span>
+        <span class="badge bg-secondary">Queued</span>
+      `;
+      listEl.appendChild(li);
+    });
+  });
+
+  function updateItemStatus(index, text, badgeClass) {
+    const item = listEl.querySelector(`li[data-index="${index}"]`);
+    if (!item) return;
+    const badge = item.querySelector(".badge");
+    if (badge) {
+      badge.textContent = text;
+      badge.className = "badge " + badgeClass;
+    }
+  }
+
+  function uploadNext() {
+    if (currentIndex >= files.length) {
+      uploading = false;
+      statusEl.textContent = "All uploads completed.";
+      return;
+    }
+    const file = files[currentIndex];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    updateItemStatus(currentIndex, "Uploading...", "bg-info");
+    statusEl.textContent = `Uploading ${currentIndex + 1} of ${files.length}...`;
+
+    fetch("{{ url_for('admin.mass_upload') }}", {
+      method: "POST",
+      body: formData
+    })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok || data.error) {
+          console.error("Upload error:", data.error || "Unknown error");
+          updateItemStatus(currentIndex, "Failed", "bg-danger");
+        } else {
+          updateItemStatus(currentIndex, "Done", "bg-success");
+        }
+      })
+      .catch((err) => {
+        console.error("Network error:", err);
+        updateItemStatus(currentIndex, "Failed", "bg-danger");
+      })
+      .finally(() => {
+        currentIndex++;
+        uploadNext();
+      });
+  }
+
+  startBtn.addEventListener("click", function () {
+    if (!files.length) {
+      alert("No files selected.");
+      return;
+    }
+    if (uploading) {
+      alert("Upload already in progress.");
+      return;
+    }
+    uploading = true;
+    currentIndex = 0;
+    uploadNext();
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,671 @@
+/* =========================================================
+   MyTube 2025 Theme
+   - Dark modern shell
+   - Electric blue primary, coral accent
+   ========================================================= */
+
+/* CSS variables for easy tweaking */
+:root {
+  --mt-page-bg: radial-gradient(circle at top left, #1d4ed8 0, #020617 40%, #020617 100%);
+  --mt-surface: #020617;
+  --mt-surface-soft: #05091a;
+  --mt-surface-softer: #020617;
+  --mt-border-subtle: rgba(148, 163, 184, 0.35);
+  --mt-border-strong: rgba(148, 163, 184, 0.6);
+
+  --mt-primary: #2563eb;            /* blue 600 */
+  --mt-primary-soft: rgba(37, 99, 235, 0.15);
+  --mt-primary-strong: #1d4ed8;
+
+  --mt-accent: #fb7185;             /* rose/coral */
+  --mt-accent-soft: rgba(251, 113, 133, 0.15);
+
+  --mt-text: #e5e7eb;
+  --mt-text-muted: #9ca3af;
+
+  --mt-radius-lg: 0.9rem;
+  --mt-radius-pill: 999px;
+
+  --mt-shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.75);
+}
+
+/* =========================================================
+   Global + layout
+   ========================================================= */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Main page background: fixed, non-repeating gradient */
+body.bg-light,
+html body {
+  min-height: 100%;
+  background-color: #020617 !important;
+  background-image: var(--mt-page-bg);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  color: var(--mt-text);
+}
+
+/* Make margins more snug (YouTube-like) */
+.container.mt-3 {
+  margin-top: 0.75rem !important;
+}
+
+.page-content.container.mt-2 {
+  margin-top: 0.25rem !important;
+}
+
+/* Make sure anything using .bg-light doesn't go white */
+.bg-light {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  color: var(--mt-text) !important;
+}
+
+/* Cards */
+.card {
+  background: linear-gradient(145deg, var(--mt-surface-soft), var(--mt-surface-softer));
+  border: 1px solid var(--mt-border-subtle);
+  border-radius: var(--mt-radius-lg);
+  box-shadow: var(--mt-shadow-soft);
+  color: var(--mt-text);
+}
+
+/* Slightly tighter padding inside cards (affects video top spacing) */
+.card .card-body {
+  padding-top: 0.5rem;
+}
+
+.card-header,
+.card-footer {
+  background: transparent;
+  border-color: var(--mt-border-subtle);
+}
+
+.card .text-muted {
+  color: var(--mt-text-muted) !important;
+}
+
+/* Horizontal rules & generic borders (comments etc.) */
+hr {
+  border-color: var(--mt-border-subtle);
+}
+
+.border-top {
+  border-top-color: var(--mt-border-subtle) !important;
+}
+.border-bottom {
+  border-bottom-color: var(--mt-border-subtle) !important;
+}
+.border-start {
+  border-left-color: var(--mt-border-subtle) !important;
+}
+
+/* Links */
+a {
+  color: #60a5fa;
+}
+a:hover,
+a:focus {
+  color: #93c5fd;
+}
+
+/* Video element background */
+video {
+  background-color: #000;
+}
+
+/* Make main video behave like YouTube: stable height, no jump */
+.video-main {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  display: block;
+  object-fit: contain;
+  background-color: #000;
+}
+
+
+/* Widen the site a bit (~30% more on large screens) */
+@media (min-width: 1200px) {
+  .container {
+    max-width: 1320px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .container {
+    max-width: 1500px;
+  }
+}
+
+/* =========================================================
+   Navbar + Footer
+   ========================================================= */
+
+.navbar-dark.bg-dark {
+  background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.25), #020617 60%) !important;
+  border-radius: var(--mt-radius-lg);
+  border: 1px solid var(--mt-border-subtle);
+  box-shadow: var(--mt-shadow-soft);
+}
+
+.navbar-dark .navbar-brand span {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+  color: var(--mt-text-muted);
+  transition: color 0.15s ease, background-color 0.15s ease;
+  border-radius: 999px;
+  padding-inline: 0.85rem;
+}
+
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link:focus {
+  color: var(--mt-text);
+  background-color: rgba(15, 23, 42, 0.75);
+}
+
+/* Footer shell - matches .footer-stick .bg-dark div */
+footer.bg-dark,
+.footer-stick .bg-dark {
+  background: radial-gradient(circle at top right, rgba(251, 113, 133, 0.18), #020617 70%) !important;
+  border-radius: var(--mt-radius-lg);
+  border: 1px solid var(--mt-border-subtle);
+  box-shadow: var(--mt-shadow-soft);
+  color: var(--mt-text-muted) !important;
+}
+
+/* =========================================================
+   Forms (inputs / selects / textareas / file)
+   ========================================================= */
+
+/* Label + helper text */
+.form-label,
+label {
+  color: var(--mt-text) !important;
+}
+
+.form-text {
+  color: var(--mt-text-muted) !important;
+}
+
+/* Generic inputs/selects/checks */
+.form-control,
+.form-select,
+.form-check-input {
+  background-color: #020617 !important;
+  border-color: rgba(148, 163, 184, 0.5) !important;
+  color: var(--mt-text) !important;
+}
+
+.form-control::placeholder {
+  color: rgba(148, 163, 184, 0.7);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: #020617 !important;
+  color: var(--mt-text) !important;
+  border-color: var(--mt-primary) !important;
+  box-shadow: 0 0 0 0.15rem rgba(37, 99, 235, 0.35);
+}
+
+/* Textarea (comments, about me, etc.) */
+textarea.form-control {
+  background-color: #020617 !important;
+  color: var(--mt-text) !important;
+}
+
+textarea.form-control::placeholder {
+  color: rgba(148, 163, 184, 0.7);
+}
+
+textarea.form-control:focus {
+  background-color: #020617 !important;
+  color: var(--mt-text) !important;
+}
+
+/* File input: "Choose file" button + filename text */
+.form-control[type="file"] {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+  color: var(--mt-text) !important; /* "No file chosen" text */
+}
+
+/* Modern browsers */
+.form-control[type="file"]::file-selector-button {
+  background: linear-gradient(135deg, var(--mt-primary), var(--mt-primary-strong));
+  border: 1px solid var(--mt-primary-strong);
+  color: #f9fafb;
+  border-radius: var(--mt-radius-pill);
+  padding: 0.3rem 0.9rem;
+  margin-right: 0.75rem;
+  cursor: pointer;
+}
+
+.form-control[type="file"]::file-selector-button:hover {
+  background: linear-gradient(135deg, var(--mt-primary-strong), #1e40af);
+}
+
+/* Chrome legacy prefix */
+.form-control[type="file"]::-webkit-file-upload-button {
+  background: linear-gradient(135deg, var(--mt-primary), var(--mt-primary-strong));
+  border: 1px solid var(--mt-primary-strong);
+  color: #f9fafb;
+  border-radius: var(--mt-radius-pill);
+  padding: 0.3rem 0.9rem;
+  margin-right: 0.75rem;
+  cursor: pointer;
+}
+
+/* List groups */
+.list-group-item {
+  background-color: transparent;
+  border-color: rgba(148, 163, 184, 0.25);
+  color: var(--mt-text);
+}
+
+/* Alerts */
+.alert {
+  border-radius: var(--mt-radius-lg);
+  border-width: 1px;
+}
+
+/* =========================================================
+   Buttons
+   ========================================================= */
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--mt-primary), var(--mt-primary-strong));
+  border-color: var(--mt-primary-strong);
+  color: #f9fafb;
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.45);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background: linear-gradient(135deg, var(--mt-primary-strong), #1e40af);
+  border-color: #1e40af;
+  box-shadow: 0 14px 40px rgba(37, 99, 235, 0.6);
+}
+
+.btn-outline-primary {
+  border-color: rgba(37, 99, 235, 0.7);
+  color: var(--mt-primary);
+  background: rgba(15, 23, 42, 0.75);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+  background: var(--mt-primary-soft);
+  color: #dbeafe;
+  border-color: var(--mt-primary);
+}
+
+/* Secondary / neutral buttons */
+.btn-secondary {
+  background: linear-gradient(135deg, #4b5563, #111827);
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+  background: linear-gradient(135deg, #6b7280, #111827);
+  border-color: #6b7280;
+}
+
+.btn-outline-secondary {
+  border-color: rgba(148, 163, 184, 0.8);
+  color: var(--mt-text-muted);
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--mt-text);
+}
+
+/* Danger / accent */
+.btn-danger {
+  background: linear-gradient(135deg, var(--mt-accent), #e11d48);
+  border-color: #e11d48;
+  color: #f9fafb;
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+  background: linear-gradient(135deg, #e11d48, #be123c);
+}
+
+/* Outline danger */
+.btn-outline-danger {
+  border-color: rgba(239, 68, 68, 0.9);
+  color: #fecaca;
+  background: rgba(24, 24, 27, 0.9);
+}
+
+.btn-outline-danger:hover,
+.btn-outline-danger:focus {
+  background: var(--mt-accent-soft);
+  color: #fee2e2;
+}
+
+/* Success / warning outlines for admin actions */
+.btn-outline-success {
+  border-color: rgba(34, 197, 94, 0.9);
+  color: #bbf7d0;
+  background: rgba(15, 23, 42, 0.85);
+}
+.btn-outline-success:hover,
+.btn-outline-success:focus {
+  background: rgba(34, 197, 94, 0.15);
+  color: #bbf7d0;
+}
+
+.btn-outline-warning {
+  border-color: rgba(245, 158, 11, 0.9);
+  color: #facc15;
+  background: rgba(15, 23, 42, 0.85);
+}
+.btn-outline-warning:hover,
+.btn-outline-warning:focus {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fef9c3;
+}
+
+/* Small pill-style buttons */
+.btn-sm {
+  border-radius: 999px;
+}
+
+/* =========================================================
+   Pagination
+   ========================================================= */
+
+.pagination {
+  gap: 0.15rem;
+}
+
+.page-link {
+  background-color: rgba(15, 23, 42, 0.9);
+  border-color: var(--mt-border-subtle);
+  color: var(--mt-text-muted);
+  border-radius: var(--mt-radius-pill) !important;
+  padding-inline: 0.65rem;
+  padding-block: 0.3rem;
+  font-size: 0.82rem;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.page-link:hover,
+.page-link:focus {
+  background-color: rgba(30, 64, 175, 0.9);
+  border-color: var(--mt-primary);
+  color: #e5e7eb;
+  box-shadow: 0 0 0 0.12rem rgba(37, 99, 235, 0.45);
+}
+
+.page-item.active .page-link {
+  background: linear-gradient(135deg, var(--mt-primary), var(--mt-accent));
+  border-color: var(--mt-primary);
+  color: #f9fafb;
+  box-shadow: 0 12px 25px rgba(37, 99, 235, 0.7);
+}
+
+.page-item.disabled .page-link {
+  background-color: rgba(15, 23, 42, 0.6);
+  border-color: rgba(55, 65, 81, 0.8);
+  color: rgba(75, 85, 99, 0.7);
+  box-shadow: none;
+}
+
+/* =========================================================
+   Admin sidebar
+   ========================================================= */
+
+.admin-sidebar {
+  min-height: 100%;
+  background: linear-gradient(145deg, var(--mt-surface-soft), var(--mt-surface-softer));
+  color: var(--mt-text);
+  border: 1px solid var(--mt-border-subtle);
+  border-radius: var(--mt-radius-lg);
+  box-shadow: var(--mt-shadow-soft);
+}
+
+.admin-sidebar .nav-link {
+  color: var(--mt-text-muted);
+  border-radius: var(--mt-radius-pill);
+  margin-bottom: 0.25rem;
+  padding-inline: 0.85rem;
+  font-size: 0.92rem;
+}
+
+.admin-sidebar .nav-link:hover {
+  background-color: rgba(15, 23, 42, 0.85);
+  color: var(--mt-text);
+}
+
+.admin-sidebar .nav-link.active {
+  background: linear-gradient(135deg, var(--mt-primary), var(--mt-accent));
+  color: #f9fafb;
+}
+
+/* =========================================================
+   Front-page video cards & layout
+   ========================================================= */
+
+.video-card-title {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Video card */
+.video-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(150deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.8));
+  border-radius: var(--mt-radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  box-shadow: var(--mt-shadow-soft);
+  transition: transform 0.16s ease-out, box-shadow 0.16s ease-out, border-color 0.16s ease-out;
+}
+
+.video-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.9);
+  border-color: rgba(37, 99, 235, 0.75);
+}
+
+/* Thumbnail wrapper */
+.video-thumb-wrap {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  overflow: hidden;
+  background: #020617;
+  border-radius: var(--mt-radius-lg) var(--mt-radius-lg) 0 0;
+}
+
+.video-thumb-wrap img,
+.video-thumb-wrap .thumb-placeholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-thumb-wrap .thumb-placeholder {
+  background: radial-gradient(circle at center, rgba(37, 99, 235, 0.8), #020617);
+}
+
+/* Watched border highlight */
+.video-card.border-success {
+  border-color: rgba(22, 163, 74, 0.75) !important;
+}
+
+/* Front page layout */
+.front-main {
+  min-width: 0;
+}
+
+/* Desktop sidebar */
+.front-sidebar {
+  max-width: 240px;
+}
+
+.front-sidebar-inner {
+  border-radius: var(--mt-radius-lg);
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.9));
+  border: 1px solid var(--mt-border-subtle);
+  box-shadow: var(--mt-shadow-soft);
+}
+
+@media (min-width: 768px) {
+  .front-sidebar-inner {
+    position: sticky;
+    top: 1rem;
+  }
+
+  .front-sidebar {
+    border-right: 0;
+  }
+}
+
+/* Sidebar list styling */
+.front-sidebar .list-group-item {
+  border: none;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+  background-color: transparent;
+  color: var(--mt-text-muted);
+  border-radius: var(--mt-radius-pill);
+}
+
+.front-sidebar .list-group-item i {
+  font-size: 1.1rem;
+}
+
+.front-sidebar .list-group-item.active {
+  background: linear-gradient(135deg, var(--mt-primary), var(--mt-accent));
+  color: #f9fafb;
+  font-weight: 600;
+}
+
+/* Mobile horizontal pills */
+@media (max-width: 767.98px) {
+  .front-sidebar {
+    max-width: none;
+    width: 100%;
+    border-right: 0 !important;
+    border-bottom: 0;
+    margin-bottom: 1rem;
+  }
+
+  .front-sidebar-inner {
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--mt-radius-lg);
+  }
+
+  .front-sidebar .list-group {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    white-space: nowrap;
+    gap: 0.25rem;
+  }
+
+  .front-sidebar .list-group-item {
+    flex: 0 0 auto;
+    border-radius: var(--mt-radius-pill);
+    padding-inline: 0.9rem;
+  }
+}
+
+/* =========================================================
+   Tables (admin, etc.)
+   ========================================================= */
+
+.table {
+  color: var(--mt-text) !important;
+  margin-bottom: 0;
+}
+
+/* Header with .table-light */
+.table thead.table-light,
+.table thead.table-light > tr > th,
+.table thead.table-light > tr > td,
+.table-light {
+  background: rgba(15, 23, 42, 0.98) !important;
+  color: var(--mt-text) !important;
+  border-color: var(--mt-border-strong) !important;
+}
+
+/* Body rows */
+.table tbody tr {
+  border-color: rgba(148, 163, 184, 0.25);
+  background-color: rgba(15, 23, 42, 0.9) !important;
+}
+
+.table tbody tr:nth-of-type(odd) {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+}
+
+.table tbody tr:hover {
+  background-color: rgba(30, 64, 175, 0.22) !important;
+}
+
+/* Ensure cells don't reintroduce white */
+.table tbody td,
+.table tbody th,
+.table thead th {
+  background-color: transparent !important;
+  color: var(--mt-text) !important;
+}
+
+/* =========================================================
+   AI overlay tweaks
+   ========================================================= */
+
+.ai-overlay-card {
+  background: linear-gradient(145deg, var(--mt-surface-soft), var(--mt-surface-softer));
+  border: 1px solid var(--mt-border-subtle);
+  color: var(--mt-text);
+}
+
+.ai-progress-circle-bg {
+  stroke: rgba(148, 163, 184, 0.35);
+}
+
+.ai-progress-circle {
+  stroke: var(--mt-primary);
+}
+
+/* =========================================================
+   Typography
+   ========================================================= */
+
+h1, h2, h3, h4, h5, h6 {
+  color: #e5e7eb;
+}
+
+.text-muted {
+  color: var(--mt-text-muted) !important;
+}

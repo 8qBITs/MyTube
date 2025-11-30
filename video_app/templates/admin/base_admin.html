@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - MyTube{% endblock %}
+
+{% block content %}
+<div class="row">
+  <!-- Sidebar -->
+  <div class="col-md-3 col-lg-2 mb-3">
+    <div class="admin-sidebar p-3 rounded-3">
+      <h5 class="mb-3 d-flex align-items-center">
+        <i class="bi bi-speedometer2 me-2"></i>
+        <span>Admin</span>
+      </h5>
+      <div class="nav flex-column nav-pills">
+        <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}"
+           href="{{ url_for('admin.dashboard') }}">
+          <i class="bi bi-speedometer2 me-2"></i>
+          Overview
+        </a>
+        <a class="nav-link {% if request.endpoint == 'admin.videos' %}active{% endif %}"
+           href="{{ url_for('admin.videos') }}">
+          <i class="bi bi-film me-2"></i>
+          Videos
+        </a>
+        <a class="nav-link {% if request.endpoint == 'admin.manage_users' %}active{% endif %}"
+           href="{{ url_for('admin.manage_users') }}">
+          <i class="bi bi-people me-2"></i>
+          Users
+        </a>
+        <a class="nav-link {% if request.endpoint == 'admin.upload_video' %}active{% endif %}"
+           href="{{ url_for('admin.upload_video') }}">
+          <i class="bi bi-upload me-2"></i>
+          Upload
+        </a>
+        <a class="nav-link {% if request.endpoint == 'admin.mass_upload' %}active{% endif %}"
+           href="{{ url_for('admin.mass_upload') }}">
+          <i class="bi bi-collection-play me-2"></i>
+          Mass Upload
+        </a>
+        <a class="nav-link {% if request.endpoint == 'admin.discover_videos' %}active{% endif %}"
+           href="{{ url_for('admin.discover_videos') }}">
+          <i class="bi bi-search me-2"></i>
+          Discover
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main admin content -->
+  <div class="col-md-9 col-lg-10">
+    {% block admin_content %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

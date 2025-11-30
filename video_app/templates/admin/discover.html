@@ -1,0 +1,91 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Discover Videos - Admin - MyTube{% endblock %}
+
+{% block admin_content %}
+<h2 class="mb-3">Discover Existing Video Files</h2>
+
+<div class="card">
+  <div class="card-body">
+    {% if missing_files %}
+      <p class="mb-3">
+        The following files were found in the video storage directory but are not in the database.
+        Select any you want to add.
+      </p>
+
+      <!-- Controls: select all / none + count -->
+      <div class="d-flex align-items-center mb-2">
+        <div class="btn-group btn-group-sm me-3" role="group" aria-label="Select controls">
+          <button type="button" class="btn btn-outline-secondary" id="selectAllBtn">
+            Select all
+          </button>
+          <button type="button" class="btn btn-outline-secondary" id="selectNoneBtn">
+            Select none
+          </button>
+        </div>
+        <div class="small text-muted">
+          Selected: <span id="selectedCount">0</span> / {{ missing_files|length }}
+        </div>
+      </div>
+
+      <form method="post" id="discoverForm">
+        <div class="mb-3" id="fileCheckboxContainer">
+          {% for fname in missing_files %}
+          <div class="form-check">
+            <input class="form-check-input file-checkbox"
+                   type="checkbox"
+                   name="filenames"
+                   value="{{ fname }}"
+                   id="file_{{ loop.index }}">
+            <label class="form-check-label" for="file_{{ loop.index }}">
+              {{ fname }}
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary">
+          Import Selected
+        </button>
+      </form>
+
+      <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const selectAllBtn = document.getElementById("selectAllBtn");
+        const selectNoneBtn = document.getElementById("selectNoneBtn");
+        const checkboxes = Array.from(document.querySelectorAll(".file-checkbox"));
+        const selectedCountSpan = document.getElementById("selectedCount");
+
+        function updateSelectedCount() {
+          const count = checkboxes.filter(cb => cb.checked).length;
+          selectedCountSpan.textContent = count.toString();
+        }
+
+        if (selectAllBtn) {
+          selectAllBtn.addEventListener("click", function () {
+            checkboxes.forEach(cb => cb.checked = true);
+            updateSelectedCount();
+          });
+        }
+
+        if (selectNoneBtn) {
+          selectNoneBtn.addEventListener("click", function () {
+            checkboxes.forEach(cb => cb.checked = false);
+            updateSelectedCount();
+          });
+        }
+
+        checkboxes.forEach(cb => {
+          cb.addEventListener("change", updateSelectedCount);
+        });
+
+        // Init
+        updateSelectedCount();
+      });
+      </script>
+    {% else %}
+      <p class="mb-0 text-muted">
+        No untracked video files were found in the video storage directory.
+      </p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
